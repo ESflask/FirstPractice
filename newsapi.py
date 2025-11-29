@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta, timezone
 import os
+from datetime import datetime, timedelta, timezone
+
 import requests
 from dotenv import load_dotenv
 
@@ -25,39 +26,69 @@ def fetch_articles(
     page_size: int = 5,
     field: str = "title",
 ):
-    """ニュース記事を取得し、指定フィールドのリストを返す"""
-    if not from_ts or not to_ts:
-        default_from, default_to = _default_time_range()
-        from_ts = from_ts or default_from
-        to_ts = to_ts or default_to
-
-    params = {
-        "q": query,
-        "from": from_ts,
-        "to": to_ts,
-        "sortBy": "relevancy",
-        "pageSize": page_size,
-        "apiKey": API_KEY,
-    }
-    resp = requests.get(BASE_URL, params=params, timeout=10)
+    """
+    ニュース記事を取得し、指定フィールドのリストを返す
+    エラー時（レート制限、ネットワークエラーなど）は空リストを返す
+    """
     try:
-        resp.raise_for_status()
-    except requests.HTTPError as exc:
-        try:
-            detail = resp.json().get("message", resp.text)
-        except ValueError:
-            detail = resp.text
-        raise RuntimeError(
-            f"NewsAPI request failed ({resp.status_code}): {detail}"
-        ) from exc
+        if not from_ts or not to_ts:
+            default_from, default_to = _default_time_range()
+            from_ts = from_ts or default_from
+            to_ts = to_ts or default_to
 
-    articles = resp.json().get("articles", [])
-    values = []
-    for article in articles:
-        text = article.get(field) or ""
-        if text.strip():
-            values.append(text.strip())
-    return values
+        params = {
+            "q": query,
+            "from": from_ts,
+            "to": to_ts,
+            "sortBy": "relevancy",
+            "pageSize": page_size,
+            "apiKey": API_KEY,
+        }
+        
+        resp = requests.get(BASE_URL, params=params, timeout=10)
+        
+        # すべてのHTTPエラーをraise_for_status()の前にチェックして空リストを返す
+        if not resp.ok:
+            try:
+                detail = resp.json().get("message", resp.text)
+            except (ValueError, AttributeError):
+                detail = resp.text or f"HTTP {resp.status_code}"
+            
+            if resp.status_code == 429:
+                print(f"[NewsAPI] Rate limit exceeded (429): {detail}. Returning empty list.")
+            elif resp.status_code >= 500:
+                print(f"[NewsAPI] Server error ({resp.status_code}): {detail}. Returning empty list.")
+            else:
+                print(f"[NewsAPI] Request failed ({resp.status_code}): {detail}. Returning empty list.")
+            return []
+        
+        # レスポンスのパース
+        try:
+            json_data = resp.json()
+        except ValueError as e:
+            print(f"[NewsAPI] Failed to parse JSON response: {e}. Returning empty list.")
+            return []
+        
+        articles = json_data.get("articles", [])
+        values = []
+        for article in articles:
+            text = article.get(field) or ""
+            if text.strip():
+                values.append(text.strip())
+        return values
+        
+    except requests.exceptions.Timeout:
+        print(f"[NewsAPI] Request timeout. Returning empty list.")
+        return []
+    except requests.exceptions.ConnectionError as e:
+        print(f"[NewsAPI] Connection error: {e}. Returning empty list.")
+        return []
+    except requests.exceptions.RequestException as e:
+        print(f"[NewsAPI] Request exception: {e}. Returning empty list.")
+        return []
+    except Exception as e:
+        print(f"[NewsAPI] Unexpected error: {e}. Returning empty list.")
+        return []
 
 
 def fetch_full_articles(
@@ -66,47 +97,77 @@ def fetch_full_articles(
     to_ts: str | None = None,
     page_size: int = 5,
 ):
-    """ニュース記事を取得し、記事全体（タイトル、説明、URLなど）のリストを返す"""
-    if not from_ts or not to_ts:
-        default_from, default_to = _default_time_range()
-        from_ts = from_ts or default_from
-        to_ts = to_ts or default_to
-
-    params = {
-        "q": query,
-        "from": from_ts,
-        "to": to_ts,
-        "sortBy": "relevancy",
-        "pageSize": page_size,
-        "apiKey": API_KEY,
-    }
-    resp = requests.get(BASE_URL, params=params, timeout=10)
+    """
+    ニュース記事を取得し、記事全体（タイトル、説明、URLなど）のリストを返す
+    エラー時（レート制限、ネットワークエラーなど）は空リストを返す
+    """
     try:
-        resp.raise_for_status()
-    except requests.HTTPError as exc:
-        try:
-            detail = resp.json().get("message", resp.text)
-        except ValueError:
-            detail = resp.text
-        raise RuntimeError(
-            f"NewsAPI request failed ({resp.status_code}): {detail}"
-        ) from exc
+        if not from_ts or not to_ts:
+            default_from, default_to = _default_time_range()
+            from_ts = from_ts or default_from
+            to_ts = to_ts or default_to
 
-    articles = resp.json().get("articles", [])
-    result = []
-    for article in articles:
-        article_data = {
-            "title": article.get("title", "").strip(),
-            "description": article.get("description", "").strip(),
-            "url": article.get("url", "").strip(),
-            "urlToImage": article.get("urlToImage", "").strip(),  # 画像のURL（住所）を取得
-            "publishedAt": article.get("publishedAt", "").strip(),
-            "source": article.get("source", {}).get("name", "").strip(),
+        params = {
+            "q": query,
+            "from": from_ts,
+            "to": to_ts,
+            "sortBy": "relevancy",
+            "pageSize": page_size,
+            "apiKey": API_KEY,
         }
-        # タイトルまたは説明がある記事のみ追加
-        if article_data["title"] or article_data["description"]:
-            result.append(article_data)
-    return result
+        
+        resp = requests.get(BASE_URL, params=params, timeout=10)
+        
+        # すべてのHTTPエラーをraise_for_status()の前にチェックして空リストを返す
+        if not resp.ok:
+            try:
+                detail = resp.json().get("message", resp.text)
+            except (ValueError, AttributeError):
+                detail = resp.text or f"HTTP {resp.status_code}"
+            
+            if resp.status_code == 429:
+                print(f"[NewsAPI] Rate limit exceeded (429): {detail}. Returning empty list.")
+            elif resp.status_code >= 500:
+                print(f"[NewsAPI] Server error ({resp.status_code}): {detail}. Returning empty list.")
+            else:
+                print(f"[NewsAPI] Request failed ({resp.status_code}): {detail}. Returning empty list.")
+            return []
+        
+        # レスポンスのパース
+        try:
+            json_data = resp.json()
+        except ValueError as e:
+            print(f"[NewsAPI] Failed to parse JSON response: {e}. Returning empty list.")
+            return []
+        
+        articles = json_data.get("articles", [])
+        result = []
+        for article in articles:
+            article_data = {
+                "title": article.get("title", "").strip(),
+                "description": article.get("description", "").strip(),
+                "url": article.get("url", "").strip(),
+                "urlToImage": article.get("urlToImage", "").strip(),  # 画像のURL（住所）を取得
+                "publishedAt": article.get("publishedAt", "").strip(),
+                "source": article.get("source", {}).get("name", "").strip(),
+            }
+            # タイトルまたは説明がある記事のみ追加
+            if article_data["title"] or article_data["description"]:
+                result.append(article_data)
+        return result
+        
+    except requests.exceptions.Timeout:
+        print(f"[NewsAPI] Request timeout. Returning empty list.")
+        return []
+    except requests.exceptions.ConnectionError as e:
+        print(f"[NewsAPI] Connection error: {e}. Returning empty list.")
+        return []
+    except requests.exceptions.RequestException as e:
+        print(f"[NewsAPI] Request exception: {e}. Returning empty list.")
+        return []
+    except Exception as e:
+        print(f"[NewsAPI] Unexpected error: {e}. Returning empty list.")
+        return []
 
 
 if __name__ == "__main__":

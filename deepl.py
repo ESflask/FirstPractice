@@ -1,11 +1,12 @@
 import os
+
 import requests
 from dotenv import load_dotenv
 
 # 環境変数の読み込み
 load_dotenv()
 
-AUTH_KEY = os.getenv("DEEPL_API_KEY", "REDACTED_DEEPL_KEY")
+AUTH_KEY = os.getenv("DEEPL_AUTH_KEY", "REDACTED_DEEPL_KEY")
 BASE_URL = "https://api-free.deepl.com/v2/translate"
 
 
