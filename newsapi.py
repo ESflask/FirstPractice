@@ -1,8 +1,12 @@
 from datetime import datetime, timedelta, timezone
-
+import os
 import requests
+from dotenv import load_dotenv
 
-API_KEY = "eec9d227dcdf47b9bfa9b53a9f8d4042"
+# 環境変数の読み込み
+load_dotenv()
+
+API_KEY = os.getenv("NEWSAPI_KEY", "eec9d227dcdf47b9bfa9b53a9f8d4042")
 BASE_URL = "https://newsapi.org/v2/everything"
 
 
