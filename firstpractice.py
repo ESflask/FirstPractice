@@ -1,8 +1,11 @@
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 from dotenv import load_dotenv
 from deepl import translate_to_ja
 from newsapi import fetch_full_articles
+
+API_KEY = os.getenv("OPENAI_API_KEY")
+
 
 # Flaskのインスタンス作成
 app = Flask(__name__)
@@ -49,15 +52,22 @@ def get_translated_articles(query="Apple", page_size=5):
 @app.route('/')
 def index():
     """
-    メインページ: 翻訳済みのニュース記事を表示
+    メインページ: 初期表示時は空のリストを表示（APIは呼ばない）
     """
-    # 記事を取得して翻訳（fetch_full_articlesがエラー時は空リストを返すため、例外処理は不要）
-    articles = get_translated_articles(query="Apple", page_size=5)
-    
+    # 初期表示時は空のリスト
     return render_template(
         'testapp/index.html',
-        articles=articles
+        articles=[]
     )
+
+
+@app.route('/api/update')
+def api_update():
+    """
+    API更新エンドポイント: ニュース記事を取得してJSONで返す
+    """
+    articles = get_translated_articles(query="Apple", page_size=5)
+    return jsonify(articles)
 
 
 if __name__ == '__main__':

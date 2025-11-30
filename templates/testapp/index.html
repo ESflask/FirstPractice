@@ -17,7 +17,7 @@
             background: #ffffff;
             min-height: 100vh;
             padding: 20px;
-            padding-top: 100px;
+            padding-top: 70px;
             line-height: 1.6;
         }
         .container {
@@ -25,17 +25,19 @@
             margin: 0 auto;
         }
         .title-bar {
-            /* 【Liquid Glass用】タイトルバー */
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 24px;
-            padding: 12px 24px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            /* 【Liquid Glass用】タイトルバー - 画像とほぼ同じ透明度（かなり透明） */
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 4px 12px;
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
             /* 固定位置 */
             position: fixed;
-            top: 20px;
+            top: 10px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -45,28 +47,82 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            min-height: 32px;
+            /* Apple風の歪み効果用 */
+            overflow: hidden;
+        }
+        /* Apple風の歪み効果 - 端の屈折効果 */
+        .title-bar::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 12px;
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, transparent 30%),
+                linear-gradient(225deg, rgba(255, 255, 255, 0.3) 0%, transparent 30%),
+                linear-gradient(45deg, transparent 70%, rgba(255, 255, 255, 0.4) 100%);
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask: 
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            pointer-events: none;
+            filter: blur(1px);
+            opacity: 0.8;
+        }
+        .title-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 12px;
+            background: 
+                radial-gradient(ellipse at top left, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at top right, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+            filter: blur(8px);
+            opacity: 0.6;
         }
         .main-title {
-            font-size: 28px;
+            font-size: 16px;
             font-weight: bold;
-            color: #333333;
+            color: #000000;
             margin: 0;
-            flex: 1;
-            text-align: center;
+            flex: 0 0 auto;
+            text-align: left;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: ellipsis;
+            min-width: 0;
+            padding-right: 10px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+            position: relative;
+            z-index: 1;
         }
         .title-bar-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
         }
         .account-button {
-            /* 【Liquid Glass用】アカウント作成ボタン */
+            /* 【Liquid Glass用】アカウント作成ボタン - 小さく */
             color: #333333;
             text-decoration: none;
             font-weight: 500;
-            font-size: 13px;
-            padding: 6px 14px;
-            border-radius: 12px;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 8px;
             background: rgba(0, 0, 0, 0.05);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -84,11 +140,40 @@
             transform: translateY(-1px);
             text-decoration: none;
         }
+        .api-update-button {
+            /* 【Liquid Glass用】API更新ボタン - 小さく */
+            color: #333333;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            display: inline-block;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .api-update-button:hover {
+            color: #000000;
+            background: rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+        .api-update-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .icon-button {
-            /* 【Liquid Glass用】アイコンボタン */
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
+            /* 【Liquid Glass用】アイコンボタン - 小さく */
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
             background: rgba(0, 0, 0, 0.05);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -101,7 +186,7 @@
             cursor: pointer;
             text-decoration: none;
             color: #333333;
-            font-size: 18px;
+            font-size: 14px;
         }
         .icon-button:hover {
             background: rgba(0, 0, 0, 0.08);
@@ -251,16 +336,16 @@
 </head>
 <body>
     <div class="title-bar">
-        <div style="flex: 1;"></div>
         <h1 class="main-title">Apple関連ニュース（日本語翻訳版）</h1>
         <div class="title-bar-actions">
+            <button id="api-update-btn" class="api-update-button">API更新</button>
             <a href="#" class="account-button">アカウント作成</a>
             <a href="#" class="icon-button" title="ユーザー">👤</a>
             <a href="#" class="icon-button" title="設定">⚙️</a>
         </div>
     </div>
     
-    <div class="container">
+    <div class="container" id="articles-container">
         {% if articles %}
         <div class="articles-container">
             {% for article in articles %}
@@ -313,9 +398,105 @@
         </div>
         {% else %}
         <div class="no-articles">
-            記事が見つかりませんでした。
+            記事が見つかりませんでした。API更新ボタンをクリックして記事を取得してください。
         </div>
         {% endif %}
     </div>
+    
+    <script>
+        // API更新ボタンの処理
+        document.getElementById('api-update-btn').addEventListener('click', function() {
+            const button = this;
+            const container = document.getElementById('articles-container');
+            
+            // ボタンを無効化
+            button.disabled = true;
+            button.textContent = '更新中...';
+            
+            // ローディング表示
+            container.innerHTML = '<div class="no-articles">記事を取得しています...</div>';
+            
+            // API更新をリクエスト
+            fetch('/api/update')
+                .then(response => response.json())
+                .then(articles => {
+                    if (articles && articles.length > 0) {
+                        // 記事を表示
+                        renderArticles(articles, container);
+                    } else {
+                        container.innerHTML = '<div class="no-articles">記事が見つかりませんでした。</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    container.innerHTML = '<div class="no-articles">記事の取得に失敗しました。しばらく待ってから再試行してください。</div>';
+                })
+                .finally(() => {
+                    // ボタンを有効化
+                    button.disabled = false;
+                    button.textContent = 'API更新';
+                });
+        });
+        
+        // 記事をレンダリングする関数
+        function renderArticles(articles, container) {
+            let html = '<div class="articles-container">';
+            
+            articles.forEach(article => {
+                html += '<div class="article-card">';
+                html += '<div class="article-header">';
+                
+                // 画像
+                if (article.urlToImage) {
+                    html += `<img src="${escapeHtml(article.urlToImage)}" alt="${escapeHtml(article.title_ja)}" class="article-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`;
+                    html += '<div class="article-image-placeholder" style="display: none;">画像なし</div>';
+                } else {
+                    html += '<div class="article-image-placeholder">画像なし</div>';
+                }
+                
+                html += '<div class="article-content">';
+                html += `<h2 class="article-title-ja">${escapeHtml(article.title_ja)}</h2>`;
+                
+                if (article.title_en) {
+                    html += `<p class="article-title-en">原文: ${escapeHtml(article.title_en)}</p>`;
+                }
+                
+                if (article.description_ja) {
+                    html += `<p class="article-description-ja">${escapeHtml(article.description_ja)}</p>`;
+                }
+                
+                if (article.description_en) {
+                    html += `<p class="article-description-en">原文: ${escapeHtml(article.description_en)}</p>`;
+                }
+                
+                html += '</div></div>';
+                html += '<div class="article-meta">';
+                
+                if (article.source) {
+                    html += `<span>出典: ${escapeHtml(article.source)}</span>`;
+                }
+                
+                if (article.publishedAt) {
+                    html += `<span>公開日: ${escapeHtml(article.publishedAt.substring(0, 10))}</span>`;
+                }
+                
+                if (article.url) {
+                    html += `<a href="${escapeHtml(article.url)}" target="_blank" class="article-link">元記事を読む →</a>`;
+                }
+                
+                html += '</div></div>';
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // HTMLエスケープ関数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
 </body>
 </html>
