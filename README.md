@@ -146,4 +146,3 @@ articles = get_translated_articles(query="Apple", page_size=10)
 ## 工夫
 
 - 無料版のnewsAPI,deeplAPIを使用したため、newsAPIのリクエスト回数に制限があるので、APIを更新というボタンを作り、トークンを節約してます
-- 
