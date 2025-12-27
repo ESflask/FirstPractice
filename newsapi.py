@@ -102,19 +102,18 @@ def fetch_full_articles(
     エラー時（レート制限、ネットワークエラーなど）は空リストを返す
     """
     try:
-        if not from_ts or not to_ts:
-            default_from, default_to = _default_time_range()
-            from_ts = from_ts or default_from
-            to_ts = to_ts or default_to
-
         params = {
             "q": query,
-            "from": from_ts,
-            "to": to_ts,
-            "sortBy": "relevancy",
+            "sortBy": "publishedAt",  # 最新の記事順に並べる
             "pageSize": page_size,
             "apiKey": API_KEY,
         }
+        
+        # 日時範囲が指定されている場合のみ追加
+        if from_ts:
+            params["from"] = from_ts
+        if to_ts:
+            params["to"] = to_ts
         
         resp = requests.get(BASE_URL, params=params, timeout=10)
         
@@ -144,12 +143,12 @@ def fetch_full_articles(
         result = []
         for article in articles:
             article_data = {
-                "title": article.get("title", "").strip(),
-                "description": article.get("description", "").strip(),
-                "url": article.get("url", "").strip(),
-                "urlToImage": article.get("urlToImage", "").strip(),  # 画像のURL（住所）を取得
-                "publishedAt": article.get("publishedAt", "").strip(),
-                "source": article.get("source", {}).get("name", "").strip(),
+                "title": (article.get("title") or "").strip(),
+                "description": (article.get("description") or "").strip(),
+                "url": (article.get("url") or "").strip(),
+                "urlToImage": (article.get("urlToImage") or "").strip(),
+                "publishedAt": (article.get("publishedAt") or "").strip(),
+                "source": (article.get("source", {}).get("name") or "").strip(),
             }
             # タイトルまたは説明がある記事のみ追加
             if article_data["title"] or article_data["description"]:
@@ -167,6 +166,66 @@ def fetch_full_articles(
         return []
     except Exception as e:
         print(f"[NewsAPI] Unexpected error: {e}. Returning empty list.")
+        return []
+
+
+async def fetch_full_articles_async(
+    query="(Apple)",
+    from_ts: str | None = None,
+    to_ts: str | None = None,
+    page_size: int = 5,
+):
+    """
+    ニュース記事を取得し、記事全体（タイトル、説明、URLなど）のリストを返す (Async)
+    """
+    try:
+        params = {
+            "q": query,
+            "sortBy": "publishedAt",
+            "pageSize": page_size,
+            "apiKey": API_KEY,
+        }
+        
+        if from_ts:
+            params["from"] = from_ts
+        if to_ts:
+            params["to"] = to_ts
+            
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.get(BASE_URL, params=params, timeout=10)
+                
+                if resp.status_code != 200:
+                    detail = resp.text
+                    print(f"[NewsAPI] Request failed ({resp.status_code}): {detail}. Returning empty list.")
+                    return []
+                    
+                json_data = resp.json()
+                
+            except httpx.RequestError as e:
+                print(f"[NewsAPI] Async request error: {e}. Returning empty list.")
+                return []
+            except ValueError as e:
+                print(f"[NewsAPI] Failed to parse JSON response: {e}. Returning empty list.")
+                return []
+        
+        articles = json_data.get("articles", [])
+        result = []
+        for article in articles:
+            article_data = {
+                "title": (article.get("title") or "").strip(),
+                "description": (article.get("description") or "").strip(),
+                "url": (article.get("url") or "").strip(),
+                "urlToImage": (article.get("urlToImage") or "").strip(),
+                "publishedAt": (article.get("publishedAt") or "").strip(),
+                "source": (article.get("source", {}).get("name") or "").strip(),
+            }
+            if article_data["title"] or article_data["description"]:
+                result.append(article_data)
+        return result
+        
+    except Exception as e:
+        print(f"[NewsAPI] Unexpected error in async fetch: {e}. Returning empty list.")
         return []
 
 
