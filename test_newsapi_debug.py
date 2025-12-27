@@ -6,7 +6,7 @@ import requests
 
 load_dotenv()
 
-API_KEY = os.getenv("NEWSAPI_KEY", "eec9d227dcdf47b9bfa9b53a9f8d4042")
+API_KEY = os.getenv("NEWSAPI_KEY")
 print(f"Using API Key: {API_KEY[:10]}...")
 
 url = "https://newsapi.org/v2/everything"
