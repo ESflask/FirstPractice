@@ -142,6 +142,8 @@ articles = get_translated_articles(query="Apple", page_size=10)
 ## デザイン
 
 - ガラス調のデザインを採用、タイトルは見えにくくならないように縁を白くしました。
+- GitHub内でapple liquid glassデザインを再現している方のcssコードを適応させています。
+- ![0CE4467F-9268-4062-9587-682A527C5650_1_201_a](https://github.com/user-attachments/assets/fa9e7886-e2b5-4aa8-b2eb-7e79224b9515)
 
 ## 工夫
 
