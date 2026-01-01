@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import traceback
-from firstpractice import get_translated_articles
+from app import get_translated_articles
 
 print("Testing get_translated_articles function...")
 print("=" * 50)

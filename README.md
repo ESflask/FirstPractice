@@ -38,7 +38,7 @@ NEWSAPI_KEY=your_newsapi_key_here
 ### 4. アプリケーションの起動
 
 ```bash
-python firstpractice.py
+python app.py
 ```
 
 アプリケーションは `http://0.0.0.0:8000` で起動します。
@@ -49,7 +49,7 @@ python firstpractice.py
 
 ```
 Flask1st/
-├── firstpractice.py      # メインのFlaskアプリケーション
+├── app.py      # メインのFlaskアプリケーション
 ├── newsapi.py            # NewsAPIから記事を取得するモジュール
 ├── deepl.py              # DeepL APIを使用して翻訳するモジュール
 ├── templates/
@@ -65,7 +65,7 @@ Flask1st/
 - `fetch_full_articles()` 関数がNewsAPIから記事を取得
 - 各記事のタイトル、説明、URL、画像URL、公開日、出典を取得
 
-### 2. 翻訳処理 (`firstpractice.py`)
+### 2. 翻訳処理 (`app.py`)
 
 - `get_translated_articles()` 関数が記事を取得
 - 各記事のタイトルと説明を `translate_to_ja()` 関数で日本語に翻訳
@@ -81,7 +81,7 @@ Flask1st/
 
 ### 検索クエリの変更
 
-`firstpractice.py`の`index()`関数内で、検索クエリを変更できます：
+`app.py`の`index()`関数内で、検索クエリを変更できます：
 
 ```python
 articles = get_translated_articles(query="Apple", page_size=5)
