@@ -144,5 +144,4 @@ articles = get_translated_articles(query="Apple", page_size=10)
 - ![0CE4467F-9268-4062-9587-682A527C5650_1_201_a](https://github.com/user-attachments/assets/fa9e7886-e2b5-4aa8-b2eb-7e79224b9515)
 
 ## 工夫
-
-- 無料版のnewsAPI,deeplAPIを使用したため、newsAPIのリクエスト回数に制限があるので、APIを更新というボタンを作り、トークンを節約してます
+- 無料版の NewsAPI / DeepL API を使用しているため、リクエスト回数制限を考慮し、自動更新ではなく「APIを更新」ボタンを実装しました。これにより不要なリクエストを避け、トークン消費を抑える設計にしています。
