@@ -696,6 +696,33 @@ body {
     background: rgba(0, 0, 0, 0.1);
 }
 
+/* ===== ARTICLE DETAIL MODAL ===== */
+.modal-content.modal-lg {
+    max-width: 800px;
+}
+
+#article-detail-body {
+    padding-right: 15px; /* For scrollbar */
+}
+
+#article-detail-image {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    background-color: rgba(0,0,0,0.05);
+}
+
+#article-detail-content {
+    line-height: 1.7;
+    font-size: 16px;
+    color: var(--primary-text);
+    white-space: pre-wrap; /* Preserve newlines from content */
+}
+
+
 .user-post-badge {
     display: inline-block;
     padding: 4px 8px;

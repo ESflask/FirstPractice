@@ -9,10 +9,19 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
 dist/
 *.egg-info/
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.sqlite3
+*.db
 
 # IDE
 .vscode/
@@ -26,3 +35,5 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Xcode
+*.xcuserdata/

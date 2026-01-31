@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='glassUI.css') }}">
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #e0e0e0;
+            font-family: sans-serif;
+            padding: 2rem;
+        }
+        .admin-container {
+            max-width: 800px;
+            margin: auto;
+        }
+        .admin-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .admin-menu a {
+            display: block;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e0e0e0;
+            transition: background 0.3s;
+        }
+        .admin-menu a:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>Admin Dashboard</h1>
+            <p>Welcome, {{ current_user.email }}</p>
+        </header>
+        <nav class="admin-menu">
+            <a href="{{ url_for('admin_users') }}">Manage Users</a>
+            <a href="{{ url_for('admin_posts') }}">Manage Posts</a>
+            <a href="{{ url_for('index') }}" style="margin-top: 2rem; background: rgba(255, 255, 255, 0.05);">Back to Main Site</a>
+        </nav>
+    </div>
+</body>
+</html>
