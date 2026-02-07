@@ -1,5 +1,4 @@
-from flask import Blueprint, render_template, session
-from app.models import User
+from flask import Blueprint, render_template, session, current_app
 from app.utils.decorators import admin_required
 
 admin_bp = Blueprint('admin', __name__)
@@ -11,8 +10,17 @@ def admin_dashboard():
     管理ダッシュボード
     """
     user_id = session.get("user_id")
-    user = User.query.get(user_id)
-    return render_template("admin/index.html", current_user=user)
+    if not user_id:
+        return "Unauthorized", 401
+    
+    db = current_app.db
+    user_data = {}
+    if db:
+        doc = db.collection('users').document(user_id).get()
+        if doc.exists:
+            user_data = doc.to_dict()
+    
+    return render_template("admin/index.html", current_user=user_data)
 
 
 @admin_bp.route("/users")

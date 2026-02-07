@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>About NewsApp - Apple Style</title>
+        <style>
+            @import url("https://rsms.me/inter/inter.css");
+
+            :root {
+                --bg-color: #000000;
+                --text-color: #f5f5f7;
+                --text-secondary: #86868b;
+                --accent-blue: #0071e3;
+                --card-bg: #161617;
+                --font-main:
+                    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    Roboto, sans-serif;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background-color: var(--bg-color);
+                color: var(--text-color);
+                font-family: var(--font-main);
+                line-height: 1.1;
+                -webkit-font-smoothing: antialiased;
+                overflow-x: hidden;
+            }
+
+            /* Nav */
+            .local-nav {
+                position: sticky;
+                top: 0;
+                width: 100%;
+                height: 52px;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: saturate(180%) blur(20px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 10%;
+            }
+            .local-nav-title {
+                font-size: 21px;
+                font-weight: 600;
+            }
+            .local-nav-links {
+                display: flex;
+                gap: 20px;
+                font-size: 12px;
+                color: var(--text-secondary);
+            }
+            .local-nav-links a {
+                color: inherit;
+                text-decoration: none;
+                transition: color 0.3s;
+            }
+            .local-nav-links a:hover {
+                color: var(--accent-blue);
+            }
+
+            /* Hero Section */
+            .section-hero {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 0 20px;
+            }
+            .hero-eyebrow {
+                font-size: 24px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                color: var(--text-secondary);
+            }
+            .hero-title {
+                font-size: clamp(48px, 12vw, 120px);
+                font-weight: 700;
+                letter-spacing: -0.02em;
+                background: linear-gradient(180deg, #fff 0%, #a1a1a1 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 20px;
+            }
+            .hero-copy {
+                font-size: clamp(21px, 3vw, 28px);
+                font-weight: 600;
+                color: var(--text-secondary);
+                max-width: 800px;
+                line-height: 1.2;
+            }
+
+            /* Feature Section */
+            .section-features {
+                padding: 100px 10% 200px;
+            }
+            .grid-container {
+                display: grid;
+                grid-template-columns: repeat(12, 1fr);
+                gap: 20px;
+            }
+
+            .card {
+                background: var(--card-bg);
+                border-radius: 30px;
+                padding: 40px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+            .card-large {
+                grid-column: span 12;
+                height: 600px;
+                position: relative;
+            }
+            .card-medium {
+                grid-column: span 6;
+                height: 500px;
+            }
+            .card-small {
+                grid-column: span 4;
+                height: 400px;
+            }
+
+            .card-title {
+                font-size: 40px;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }
+            .card-copy {
+                font-size: 21px;
+                font-weight: 500;
+                color: var(--text-secondary);
+                line-height: 1.3;
+                max-width: 400px;
+            }
+
+            /* Background Logo Card (The one requested) */
+            .card-bg-logo {
+                background-image:
+                    linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+                    url("{{ url_for("static", filename="logo.png") }}");
+                background-size: cover;
+                background-position: center;
+            }
+
+            /* Stats Section */
+            .section-stats {
+                background: #000;
+                padding: 150px 10%;
+                text-align: left;
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 50px;
+            }
+            .stat-item {
+                border-top: 1px solid #333;
+                padding-top: 20px;
+            }
+            .stat-value {
+                font-size: 64px;
+                font-weight: 700;
+                margin-bottom: 10px;
+            }
+            .stat-label {
+                font-size: 17px;
+                font-weight: 600;
+                color: var(--text-secondary);
+            }
+
+            /* Sticky CTA */
+            .sticky-cta {
+                position: fixed;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%) translateY(150px);
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 12px 24px;
+                border-radius: 40px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                cursor: pointer;
+                z-index: 2000;
+                transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+                font-size: 14px;
+                font-weight: 500;
+            }
+            .sticky-cta.visible {
+                transform: translateX(-50%) translateY(0);
+            }
+            .plus-btn {
+                background: var(--accent-blue);
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+            }
+
+            /* Modal */
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                z-index: 3000;
+                display: none;
+                opacity: 0;
+                transition: opacity 0.5s;
+                justify-content: center;
+                align-items: center;
+            }
+            .modal-overlay.active {
+                display: flex;
+                opacity: 1;
+            }
+            .modal-content {
+                width: 90%;
+                max-width: 1000px;
+                text-align: center;
+                transform: translateY(50px);
+                transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+            .modal-overlay.active .modal-content {
+                transform: translateY(0);
+            }
+
+            /* Animation */
+            .reveal {
+                opacity: 0;
+                transform: translateY(50px);
+                transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+            .reveal.active {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            @media (max-width: 768px) {
+                .card-medium,
+                .card-small {
+                    grid-column: span 12;
+                }
+                .stats-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <nav class="local-nav">
+            <div class="local-nav-title">NewsApp</div>
+            <div class="local-nav-links">
+                <a href="/">Feed</a>
+                <a href="#">Overview</a>
+                <a href="#">Tech Specs</a>
+            </div>
+        </nav>
+
+        <section class="section-hero">
+            <div class="hero-eyebrow">Intelligence. Reimagined.</div>
+            <h1 class="hero-title">NewsApp</h1>
+            <p class="hero-copy">
+                The first global news aggregator built for speed, transparency,
+                and clarity. Powered by DeepL.
+            </p>
+        </section>
+
+        <section class="section-features">
+            <div class="grid-container">
+            <div class="card card-large card-bg-logo reveal">
+                <h2 class="card-title">Multi-Source.<br>Simultaneous.</h2>
+                
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 60px; margin: 40px 0;">
+                    <div style="text-align: center;">
+                        <img src="{{ url_for('static', filename='uploads/built_with_tech.jpeg') }}" alt="Flask" 
+                             style="height: 120px; width: auto;">
+                    </div>
+                    <div style="text-align: center;">
+                        <img src="{{ url_for('static', filename='uploads/built_with_tech_right.jpg') }}" alt="HTML" 
+                             style="height: 120px; width: auto;">
+                    </div>
+                </div>
+
+                <p class="card-copy">Harnessing NewsAPI, GNews, and NewsData.io in one single, high-performance engine.</p>
+            </div>
+
+
+                <div class="card card-medium reveal">
+                    <h2 class="card-title">Real-time Translation.</h2>
+                    <p class="card-copy">
+                        Seamlessly integrated with DeepL API for
+                        professional-grade Japanese and English translation.
+                    </p>
+                    <div
+                        style="
+                            flex: 1;
+                            display: flex;
+                            align-items: flex-end;
+                            justify-content: center;
+                            font-size: 80px;
+                        "
+                    >
+                        ⚡
+                    </div>
+                </div>
+
+                <div class="card card-medium reveal">
+                    <h2 class="card-title">Liquid Glass.</h2>
+                    <p class="card-copy">
+                        A stunning visual interface that prioritizes content
+                        while delivering a premium aesthetic.
+                    </p>
+                    <div
+                        style="
+                            flex: 1;
+                            display: flex;
+                            align-items: flex-end;
+                            justify-content: center;
+                            font-size: 80px;
+                        "
+                    >
+                        ✨
+                    </div>
+                </div>
+
+                <div class="card card-small reveal">
+                    <h2 class="card-title">Privacy.</h2>
+                    <p class="card-copy">
+                        Your reading habits stay yours. Built with secure
+                        authentication and data standards.
+                    </p>
+                </div>
+                <div class="card card-small reveal">
+                    <h2 class="card-title">iOS.</h2>
+                    <p class="card-copy">
+                        SwiftUI native experience coming soon to your favorite
+                        device.
+                    </p>
+                </div>
+                <div class="card card-small reveal">
+                    <h2 class="card-title">Social.</h2>
+                    <p class="card-copy">
+                        Share, discuss, and interact with news that matters to
+                        your community.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-stats" id="tech-trigger">
+            <h2 style="font-size: 48px; margin-bottom: 80px">
+                Project Vitality.
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-item reveal">
+                    <div class="stat-value">{{ post_count }}</div>
+                    <div class="stat-label">Stories Shared</div>
+                </div>
+                <div class="stat-item reveal">
+                    <div class="stat-value">{{ user_count }}</div>
+                    <div class="stat-label">Pro Members</div>
+                </div>
+                <div class="stat-item reveal">
+                    <div class="stat-value">{{ sources|length }}</div>
+                    <div class="stat-label">API Engines</div>
+                </div>
+            </div>
+        </section>
+
+        <footer
+            style="
+                padding: 100px 10%;
+                color: var(--text-secondary);
+                font-size: 12px;
+                border-top: 1px solid #333;
+            "
+        >
+            <p>Copyright © 2026 NewsApp. All rights reserved.</p>
+        </footer>
+
+        <div class="sticky-cta" id="sticky-cta" onclick="toggleModal()">
+            <span class="plus-btn">+</span> ニュースエンジンを比較する
+        </div>
+
+        <div
+            class="modal-overlay"
+            id="modal-overlay"
+            onclick="if(event.target === this) toggleModal()"
+        >
+            <div class="modal-content">
+                <h2
+                    style="
+                        font-size: clamp(32px, 5vw, 64px);
+                        font-weight: 700;
+                        margin-bottom: 40px;
+                    "
+                >
+                    Compare Engines.
+                </h2>
+                <div
+                    style="
+                        background: #161617;
+                        border-radius: 20px;
+                        padding: 40px;
+                        text-align: left;
+                    "
+                >
+                    <table style="width: 100%; border-collapse: collapse">
+                        <tr style="border-bottom: 1px solid #333">
+                            <th style="padding: 20px 0">Feature</th>
+                            <th>NewsAPI</th>
+                            <th>GNews</th>
+                            <th>NewsData</th>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #333">
+                            <td style="padding: 20px 0">Global Sources</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #333">
+                            <td style="padding: 20px 0">Speed</td>
+                            <td>Fast</td>
+                            <td>Fast</td>
+                            <td>Real-time</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 20px 0">DeepL Support</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                    </table>
+                </div>
+                <button
+                    onclick="toggleModal()"
+                    style="
+                        margin-top: 40px;
+                        background: none;
+                        border: 1px solid #fff;
+                        color: #fff;
+                        padding: 10px 30px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                    "
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+
+        <script>
+            // Scroll Reveal
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting)
+                            entry.target.classList.add("active");
+                    });
+                },
+                { threshold: 0.1 },
+            );
+
+            document
+                .querySelectorAll(".reveal")
+                .forEach((el) => observer.observe(el));
+
+            // Sticky CTA Reveal
+            const cta = document.getElementById("sticky-cta");
+            const trigger = document.getElementById("tech-trigger");
+
+            window.addEventListener("scroll", () => {
+                const rect = trigger.getBoundingClientRect();
+                if (rect.top <= window.innerHeight)
+                    cta.classList.add("visible");
+                else cta.classList.remove("visible");
+            });
+
+            function toggleModal() {
+                const m = document.getElementById("modal-overlay");
+                m.classList.toggle("active");
+                m.style.display = m.classList.contains("active")
+                    ? "flex"
+                    : "none";
+                document.body.style.overflow = m.classList.contains("active")
+                    ? "hidden"
+                    : "";
+            }
+        </script>
+    </body>
+</html>

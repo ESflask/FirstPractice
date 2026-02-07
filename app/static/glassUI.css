@@ -821,6 +821,8 @@ body {
     align-items: center;
     justify-content: center;
     margin: 0 !important;
+    white-space: nowrap;
+    min-width: 70px;
     /* Reset margin */
 }
 

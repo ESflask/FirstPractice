@@ -15,7 +15,7 @@
         /* Make article cards clickable */
         .article-card { cursor: pointer !important; }
         /* Critical interactive elements */
-        .glass-button, .lang-option, .search-button, .sidebar-icon, .user-avatar, .modal-close, .btn-primary, .btn-secondary {
+        .glass-button, .lang-option, .sidebar-icon, .user-avatar, .modal-close, .btn-primary, .btn-secondary {
             pointer-events: auto !important;
             cursor: pointer !important;
             position: relative;
@@ -51,6 +51,7 @@
             <a href="#" class="sidebar-icon" title="ホーム" onclick="event.preventDefault(); navigateHome();"><span class="sidebar-icon-symbol">⌂</span><span class="sidebar-icon-text" id="sidebar-home">ホーム</span></a>
             <a href="#" class="sidebar-icon" title="お気に入り" onclick="event.preventDefault(); navigateFavorites();"><span class="sidebar-icon-symbol">☆</span><span class="sidebar-icon-text" id="sidebar-favorites">お気に入り</span></a>
             <a href="#" class="sidebar-icon" title="設定" onclick="event.preventDefault(); navigateSettings();"><span class="sidebar-icon-symbol">⚙</span><span class="sidebar-icon-text" id="sidebar-settings">設定</span></a>
+            <a href="{{ url_for('main.about') }}" class="sidebar-icon" title="NewsAppについて"><span class="sidebar-icon-symbol">ⓘ</span><span class="sidebar-icon-text" id="sidebar-about">NewsAppについて</span></a>
             <div class="sidebar-spacer"></div>
             <div class="sidebar-user" id="sidebarUser">
                 <div class="user-avatar" id="userAvatar" onclick="event.stopPropagation(); toggleUserMenu();">●</div>
@@ -90,6 +91,16 @@
                 </div>
             </div>
             <div class="action-area" style="display: flex; align-items: center; gap: 12px;">
+                <div id="auth-buttons" style="display: flex; gap: 8px;">
+                    <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('login')" id="top-login-btn">
+                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text">ログイン</span>
+                    </button>
+                    <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('register')" id="top-register-btn" style="background: rgba(255,255,255,0.2);">
+                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text">新規登録</span>
+                    </button>
+                </div>
                 <div class="lang-toggle">
                     <button class="lang-option active" data-lang="ja" onclick="setLanguage('ja')">🇯🇵 JA</button>
                     <button class="lang-option" data-lang="en" onclick="setLanguage('en')">🇺🇸 EN</button>
@@ -107,6 +118,18 @@
 
         <!-- MAIN CONTENT -->
         <div class="container" id="articles-container" style="margin-top: 100px;">
+            <!-- Welcome Banner for Guest -->
+            <div id="guest-welcome-banner" class="liquidGlass-wrapper" style="margin-bottom: 30px; padding: 40px; text-align: center; border-radius: 20px; display: none;">
+                <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                <div class="liquidGlass-text" style="position: relative; z-index: 3;">
+                    <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Welcome to Apple News Reader</h1>
+                    <p style="font-size: 1.2rem; margin-bottom: 25px; opacity: 0.8;">世界中のニュースを日本語で。アカウントを作って、あなたの投稿をシェアしましょう。</p>
+                    <div style="display: flex; justify-content: center; gap: 15px;">
+                        <button class="btn-primary" onclick="openAuthModal('register')" style="padding: 12px 30px; font-size: 1.1rem;">今すぐ新規登録</button>
+                        <button class="btn-secondary" onclick="openAuthModal('login')" style="padding: 12px 30px; font-size: 1.1rem;">ログイン</button>
+                    </div>
+                </div>
+            </div>
             <!-- Articles will be rendered here by JavaScript -->
         </div>
     </div>
@@ -145,16 +168,18 @@
                     <button class="auth-tab active" id="login-tab" onclick="switchAuthTab('login')"><span id="login-tab-text">ログイン</span></button>
                     <button class="auth-tab" id="register-tab" onclick="switchAuthTab('register')"><span id="register-tab-text">新規登録</span></button>
                 </div>
-                <form id="loginForm" class="modal-form auth-form" style="display: flex;">
+                <!-- LOGIN FORM -->
+                <form id="loginForm" class="modal-form auth-form" style="display: flex; flex-direction: column;">
                     <div class="form-group"><label class="form-label" id="login-label-email">メールアドレス</label><input type="email" class="form-input" id="login-email" name="email" required placeholder="email@example.com"></div>
                     <div class="form-group"><label class="form-label" id="login-label-password">パスワード</label><input type="password" class="form-input" id="login-password" name="password" required placeholder="パスワード"></div>
                     <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeAuthModal()" id="login-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="login-submit-btn">ログイン</button></div>
                 </form>
-                <form id="registerForm" class="modal-form auth-form" style="display: none;">
+                <!-- REGISTER FORM -->
+                <form id="registerForm" class="modal-form auth-form" style="display: none; flex-direction: column;">
                     <div class="form-group"><label class="form-label" id="register-label-email">メールアドレス</label><input type="email" class="form-input" id="register-email" name="email" required placeholder="email@example.com"></div>
                     <div class="form-group"><label class="form-label" id="register-label-password">パスワード</label><input type="password" class="form-input" id="register-password" name="password" required placeholder="パスワード"></div>
                     <div class="form-group"><label class="form-label" id="register-label-confirm">パスワード確認</label><input type="password" class="form-input" id="register-confirm" name="confirm" required placeholder="パスワードを再入力"></div>
-                    <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeAuthModal()" id="register-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="register-submit-btn">登録</button></div>
+                    <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeAuthModal()" id="register-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="register-submit-btn">新規登録</button></div>
                 </form>
             </div>
         </div>
@@ -210,15 +235,27 @@
     </div>
 
     <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
     <script>
+        // Firebase configuration
+        const firebaseConfig = {{ firebase_config | tojson }};
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const firebaseDb = firebase.firestore();
+        const firebaseAuth = firebase.auth();
+
         // ===== GLOBAL STATE =====
         let currentLang = localStorage.getItem('language') || 'ja';
         let currentUser = null;
         let currentDisplayedItems = []; // Holds data for all visible items (posts and articles)
 
         const translations = {
-            ja: { appTitle: 'ニュースリーダー', updateBtn: 'ニュースを更新', createPost: '➕ 投稿を作成', modalTitle: '投稿を作成', labelTitle: 'タイトル', labelDescription: '説明', labelImage: '画像', uploadText: '画像をアップロード', cancelBtn: 'キャンセル', submitBtn: '投稿する', readMore: '続きを読む', noImage: '画像なし', userPost: 'あなたの投稿', updating: '更新中...', noArticles: '記事が見つかりませんでした。', placeholderTitle: 'タイトルを入力...', placeholderDesc: '説明を入力...', sidebarHome: 'ホーム', sidebarFavorites: 'お気に入り', sidebarSettings: '設定', menuProfile: 'プロフィール設定', menuPrefs: '環境設定', menuLogout: 'ログアウト', menuLogin: 'ログイン', menuRegister: '新規登録', searchPlaceholder: '記事を検索...', searchBtn: '検索', loginTitle: 'ログイン', registerTitle: '新規登録', emailLabel: 'メールアドレス', passwordLabel: 'パスワード', confirmPasswordLabel: 'パスワード確認', profileTitle: 'プロフィール設定', profileIcon: 'プロフィールアイコン', profileEmail: 'メールアドレス', passwordChange: 'パスワード変更', currentPassword: '現在のパスワード', newPassword: '新しいパスワード', confirmPassword: 'パスワード確認', saveBtn: '保存' },
-            en: { appTitle: 'News Reader', updateBtn: 'Update News API', createPost: '➕ Create Post', modalTitle: 'Create Post', labelTitle: 'Title', labelDescription: 'Description', labelImage: 'Image', uploadText: 'Upload Image', cancelBtn: 'Cancel', submitBtn: 'Submit', readMore: 'Read More', noImage: 'No Image', userPost: 'Your Post', updating: 'Updating...', noArticles: 'No articles found yet.', placeholderTitle: 'Enter title...', placeholderDesc: 'Enter description...', sidebarHome: 'Home', sidebarFavorites: 'Favorites', sidebarSettings: 'Settings', menuProfile: 'Profile Settings', menuPrefs: 'Preferences', menuLogout: 'Log Out', menuLogin: 'Login', menuRegister: 'Register', searchPlaceholder: 'Search articles...', searchBtn: 'Search', loginTitle: 'Login', registerTitle: 'Register', emailLabel: 'Email', passwordLabel: 'Password', confirmPasswordLabel: 'Confirm Password', profileTitle: 'Profile Settings', profileIcon: 'Profile Icon', profileEmail: 'Email', passwordChange: 'Change Password', currentPassword: 'Current Password', newPassword: 'New Password', confirmPassword: 'Confirm Password', saveBtn: 'Save' }
+            ja: { appTitle: 'ニュースリーダー', updateBtn: 'ニュースを更新', createPost: '➕ 投稿を作成', modalTitle: '投稿を作成', labelTitle: 'タイトル', labelDescription: '説明', labelImage: '画像', uploadText: '画像をアップロード', cancelBtn: 'キャンセル', submitBtn: '投稿する', readMore: '続きを読む', noImage: '画像なし', userPost: 'あなたの投稿', updating: '更新中...', noArticles: '記事が見つかりませんでした。', placeholderTitle: 'タイトルを入力...', placeholderDesc: '説明を入力...', sidebarHome: 'ホーム', sidebarFavorites: 'お気に入り', sidebarSettings: '設定', sidebarAbout: 'NewsAppについて', menuProfile: 'プロフィール設定', menuPrefs: '環境設定', menuLogout: 'ログアウト', menuLogin: 'ログイン', menuRegister: '新規登録', searchPlaceholder: '記事を検索...', searchBtn: '検索', loginTitle: 'ログイン', registerTitle: '新規登録', emailLabel: 'メールアドレス', passwordLabel: 'パスワード', confirmPasswordLabel: 'パスワード確認', profileTitle: 'プロフィール設定', profileIcon: 'プロフィールアイコン', profileEmail: 'メールアドレス', passwordChange: 'パスワード変更', currentPassword: '現在のパスワード', newPassword: '新しいパスワード', confirmPassword: 'パスワード確認', saveBtn: '保存' },
+            en: { appTitle: 'News Reader', updateBtn: 'Update News API', createPost: '➕ Create Post', modalTitle: 'Create Post', labelTitle: 'Title', labelDescription: 'Description', labelImage: 'Image', uploadText: 'Upload Image', cancelBtn: 'Cancel', submitBtn: 'Submit', readMore: 'Read More', noImage: 'No Image', userPost: 'Your Post', updating: 'Updating...', noArticles: 'No articles found yet.', placeholderTitle: 'Enter title...', placeholderDesc: 'Enter description...', sidebarHome: 'Home', sidebarFavorites: 'Favorites', sidebarSettings: 'Settings', sidebarAbout: 'About NewsApp', menuProfile: 'Profile Settings', menuPrefs: 'Preferences', menuLogout: 'Log Out', menuLogin: 'Login', menuRegister: 'Register', searchPlaceholder: 'Search articles...', searchBtn: 'Search', loginTitle: 'Login', registerTitle: 'Register', emailLabel: 'Email', passwordLabel: 'Password', confirmPasswordLabel: 'Confirm Password', profileTitle: 'Profile Settings', profileIcon: 'Profile Icon', profileEmail: 'Email', passwordChange: 'Change Password', currentPassword: 'Current Password', newPassword: 'New Password', confirmPassword: 'Confirm Password', saveBtn: 'Save' }
         };
 
         // ===== CORE FUNCTIONS =====
@@ -233,7 +270,10 @@
             document.getElementById('create-post-text').textContent = t.createPost;
             document.getElementById('search-input').placeholder = t.searchPlaceholder;
             document.getElementById('search-btn-text').textContent = t.searchBtn;
-            // ... and so on for all elements that need translation
+            document.getElementById('sidebar-home').textContent = t.sidebarHome;
+            document.getElementById('sidebar-favorites').textContent = t.sidebarFavorites;
+            document.getElementById('sidebar-settings').textContent = t.sidebarSettings;
+            document.getElementById('sidebar-about').textContent = t.sidebarAbout;
             
             if (document.readyState === 'complete') loadAllContent();
         }
@@ -424,16 +464,54 @@
             const loggedInMenu = document.getElementById('menu-logged-in');
             const loggedOutMenu = document.getElementById('menu-logged-out');
             const avatar = document.getElementById('userAvatar');
+            const authButtons = document.getElementById('auth-buttons');
+            const welcomeBanner = document.getElementById('guest-welcome-banner');
+
             if (currentUser) {
                 loggedInMenu.style.display = 'block';
                 loggedOutMenu.style.display = 'none';
+                if (authButtons) authButtons.style.display = 'none';
+                if (welcomeBanner) welcomeBanner.style.display = 'none';
                 avatar.style.backgroundImage = currentUser.icon ? `url(${currentUser.icon})` : '';
                 avatar.textContent = currentUser.icon ? '' : (currentUser.email.charAt(0).toUpperCase() || '●');
             } else {
                 loggedInMenu.style.display = 'none';
                 loggedOutMenu.style.display = 'block';
+                if (authButtons) authButtons.style.display = 'flex';
+                if (welcomeBanner) welcomeBanner.style.display = 'block';
                 avatar.style.backgroundImage = '';
                 avatar.textContent = '●';
+            }
+        }
+
+        // Firebase Auth Handler
+        async function handleFirebaseAuth(email, password, isRegister) {
+            try {
+                let userCredential;
+                if (isRegister) {
+                    userCredential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+                } else {
+                    userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+                }
+                const user = userCredential.user;
+                const idToken = await user.getIdToken();
+
+                // Backend session sync
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: idToken })
+                });
+
+                if (!response.ok) throw new Error('Backend sync failed');
+                
+                closeAuthModal();
+                await checkAuthStatus();
+                await loadAllContent();
+
+            } catch (error) {
+                console.error('Auth Error:', error);
+                alert(error.message);
             }
         }
 
@@ -456,7 +534,12 @@
         }
         
         async function handleLogout() {
-            try { await fetch('/api/auth/logout', { method: 'POST' }); await checkAuthStatus(); await loadAllContent(); } 
+            try { 
+                await firebaseAuth.signOut();
+                await fetch('/api/auth/logout', { method: 'POST' }); 
+                await checkAuthStatus(); 
+                await loadAllContent(); 
+            } 
             catch (error) { console.error('Logout error:', error); }
         }
 
@@ -466,8 +549,29 @@
             checkAuthStatus().then(() => loadAllContent());
 
             document.getElementById('createPostForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/posts', 'POST', async () => { closeCreatePostModal(); await loadAllContent(); }); });
-            document.getElementById('loginForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/auth/login', 'POST', async () => { closeAuthModal(); await checkAuthStatus(); await loadAllContent(); }); });
-            document.getElementById('registerForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/auth/register', 'POST', async () => { closeAuthModal(); await checkAuthStatus(); await loadAllContent(); }); });
+            
+            // Login Handler
+            document.getElementById('loginForm').addEventListener('submit', async e => { 
+                e.preventDefault(); 
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                await handleFirebaseAuth(email, password, false);
+            });
+            
+            // Register Handler
+            document.getElementById('registerForm').addEventListener('submit', async e => { 
+                e.preventDefault(); 
+                const email = document.getElementById('register-email').value;
+                const password = document.getElementById('register-password').value;
+                const confirm = document.getElementById('register-confirm').value;
+                
+                if (password !== confirm) {
+                    alert(translations[currentLang].confirmPasswordLabel + ' error');
+                    return;
+                }
+                await handleFirebaseAuth(email, password, true);
+            });
+
             document.getElementById('profileForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/profile', 'PUT', async () => { closeProfileModal(); await checkAuthStatus(); alert(translations[currentLang].saveBtn + ' complete'); }); });
             
             document.getElementById('post-image').addEventListener('change', e => previewImage(e, 'image-preview'));
