@@ -92,13 +92,21 @@
             </div>
             <div class="action-area" style="display: flex; align-items: center; gap: 12px;">
                 <div id="auth-buttons" style="display: flex; gap: 8px;">
-                    <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('login')" id="top-login-btn">
+                    <!-- Guest Buttons -->
+                    <div id="guest-buttons" style="display: flex; gap: 8px;">
+                        <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('login')" id="top-login-btn">
+                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text">ログイン</span>
+                        </button>
+                        <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('register')" id="top-register-btn" style="background: rgba(255,255,255,0.2);">
+                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text">新規登録</span>
+                        </button>
+                    </div>
+                    <!-- Logged In Buttons -->
+                    <button class="glass-button liquidGlass-wrapper" onclick="handleLogout()" id="top-logout-btn" style="display: none; background: rgba(255, 59, 48, 0.2);">
                         <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                        <span class="liquidGlass-text">ログイン</span>
-                    </button>
-                    <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('register')" id="top-register-btn" style="background: rgba(255,255,255,0.2);">
-                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                        <span class="liquidGlass-text">新規登録</span>
+                        <span class="liquidGlass-text" style="color: #ff3b30;">ログアウト</span>
                     </button>
                 </div>
                 <div class="lang-toggle">
@@ -407,11 +415,15 @@
         }
 
         function renderUserPost(post, t, index) {
+            // Use author_email if available, otherwise fallback to 'User'
+            const authorName = post.author_email ? post.author_email.split('@')[0] : 'User';
             return `
                 <div class="article-card liquidGlass-wrapper" onclick="openArticleDetailByIndex(${index})">
                     <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
                     <div class="liquidGlass-text" style="width: 100%; position: relative; z-index: 3;">
-                        <div style="margin-bottom: 10px;"><span class="user-post-badge">${t.userPost}</span></div>
+                        <div style="margin-bottom: 10px; display:flex; align-items:center; gap:8px;">
+                            <span class="user-post-badge" style="background: rgba(0,113,227,0.8);">${escapeHtml(authorName)}</span>
+                        </div>
                         <div class="article-header">
                             ${post.image ? `<img src="${escapeHtml(post.image)}" class="article-image">` : `<div class="article-image-placeholder">${t.noImage}</div>`}
                             <div class="article-content">
@@ -465,20 +477,36 @@
             const loggedOutMenu = document.getElementById('menu-logged-out');
             const avatar = document.getElementById('userAvatar');
             const authButtons = document.getElementById('auth-buttons');
+            const guestButtons = document.getElementById('guest-buttons');
+            const logoutBtn = document.getElementById('top-logout-btn');
             const welcomeBanner = document.getElementById('guest-welcome-banner');
 
             if (currentUser) {
+                // Logged In State
                 loggedInMenu.style.display = 'block';
                 loggedOutMenu.style.display = 'none';
-                if (authButtons) authButtons.style.display = 'none';
+                
+                // Top bar buttons
+                if (authButtons) authButtons.style.display = 'flex'; // Container visible
+                if (guestButtons) guestButtons.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'flex';
+
                 if (welcomeBanner) welcomeBanner.style.display = 'none';
+                
                 avatar.style.backgroundImage = currentUser.icon ? `url(${currentUser.icon})` : '';
                 avatar.textContent = currentUser.icon ? '' : (currentUser.email.charAt(0).toUpperCase() || '●');
             } else {
+                // Logged Out State
                 loggedInMenu.style.display = 'none';
                 loggedOutMenu.style.display = 'block';
+                
+                // Top bar buttons
                 if (authButtons) authButtons.style.display = 'flex';
+                if (guestButtons) guestButtons.style.display = 'flex';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+
                 if (welcomeBanner) welcomeBanner.style.display = 'block';
+                
                 avatar.style.backgroundImage = '';
                 avatar.textContent = '●';
             }
