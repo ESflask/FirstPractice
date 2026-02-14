@@ -105,3 +105,7 @@ Flaskアプリのデータ層をSQLiteからFirebaseへ移行します。
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `gunicorn app:app`
     - ※ルートにある `app.py` が `app/__init__.py` の `create_app` を呼び出すため正常に動作します。
+## 新しいUIの実装案
+Safariでは比較的快適に動作するが、Chromeではアニメーションが非常に重くなります。改善案として既存のliquid glassを再現したUIとは別で、軽量でシンプルなデザインを適応したいと思います
+
+- デザインの詳細画面 : 上部に透明度低めのすりガラス状バーを置き（画面上に浮かせないで）、

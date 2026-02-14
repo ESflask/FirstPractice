@@ -417,6 +417,15 @@
         function renderUserPost(post, t, index) {
             // Use author_email if available, otherwise fallback to 'User'
             const authorName = post.author_email ? post.author_email.split('@')[0] : 'User';
+            
+            // Image handling: check image_base64 (iOS) first, then image (Web)
+            let imageHtml = `<div class="article-image-placeholder">${t.noImage}</div>`;
+            if (post.image_base64) {
+                imageHtml = `<img src="data:image/jpeg;base64,${post.image_base64}" class="article-image">`;
+            } else if (post.image) {
+                imageHtml = `<img src="${escapeHtml(post.image)}" class="article-image">`;
+            }
+
             return `
                 <div class="article-card liquidGlass-wrapper" onclick="openArticleDetailByIndex(${index})">
                     <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
@@ -425,7 +434,7 @@
                             <span class="user-post-badge" style="background: rgba(0,113,227,0.8);">${escapeHtml(authorName)}</span>
                         </div>
                         <div class="article-header">
-                            ${post.image ? `<img src="${escapeHtml(post.image)}" class="article-image">` : `<div class="article-image-placeholder">${t.noImage}</div>`}
+                            ${imageHtml}
                             <div class="article-content">
                                 <h2 class="article-title-ja">${escapeHtml(post.title)}</h2>
                                 ${post.description ? `<p class="article-description-ja">${escapeHtml(post.description)}</p>` : ''}
