@@ -7,7 +7,7 @@ import Foundation
 
 class NewsService {
     // FIXME: 自身のNews APIキーを設定してください
-    private let apiKey = "YOUR_API_KEY_HERE"
+    private let apiKey = "eec9d227dcdf47b9bfa9b53a9f8d4042"
     private let baseURL = "https://newsapi.org/v2/everything"
     
     func fetchNews(query: String = "Apple") async throws -> [NewsArticle] {

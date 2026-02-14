@@ -16,11 +16,22 @@ class NewsViewModel: ObservableObject {
     private let newsService = NewsService()
     
     func loadNews(query: String = "Apple") async {
+        guard !isLoading else { return }
         isLoading = true
         errorMessage = nil
         
+        // 取得処理自体は非同期で行われるが、明示的にバックグラウンド優先度を意識
+        let task = Task(priority: .userInitiated) {
+            do {
+                return try await newsService.fetchNews(query: query)
+            } catch {
+                throw error
+            }
+        }
+        
         do {
-            articles = try await newsService.fetchNews(query: query)
+            let fetchedArticles = try await task.value
+            self.articles = fetchedArticles
         } catch {
             errorMessage = "ニュースの取得に失敗しました: \(error.localizedDescription)"
             print("Error loading news: \(error)")

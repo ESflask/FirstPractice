@@ -34,7 +34,7 @@ struct MainFeedView: View {
     @State private var showingCreatePost = false
     
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack {
             // 背景のグラデーション
             LinearGradient(colors: [.blue.opacity(0.2), .purple.opacity(0.1), .white],
                            startPoint: .topLeading,
@@ -45,60 +45,41 @@ struct MainFeedView: View {
                 HeaderView()
                 
                 // タブセレクター
-                Picker("Tab", selection: $selectedTab) {
+                Picker("カテゴリ", selection: $selectedTab) {
                     Text("ニュース").tag(0)
                     Text("投稿").tag(1)
                 }
                 .pickerStyle(.segmented)
                 .padding()
                 
-                if selectedTab == 0 {
-                    // ニュースフィード
-                    if newsViewModel.isLoading {
-                        ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                ZStack {
+                    if selectedTab == 0 {
+                        NewsListView(viewModel: newsViewModel)
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 16) {
-                                ForEach(newsViewModel.articles) { article in
-                                    NewsCard(article: article)
-                                }
-                            }
-                            .padding()
-                        }
-                    }
-                } else {
-                    // ユーザー投稿フィード
-                    if postViewModel.isLoading && postViewModel.posts.isEmpty {
-                        ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 16) {
-                                ForEach(postViewModel.posts) { post in
-                                    UserPostCard(post: post)
-                                }
-                            }
-                            .padding()
-                        }
-                        .refreshable {
-                            await postViewModel.fetchPosts()
-                        }
+                        PostListView(viewModel: postViewModel)
                     }
                 }
             }
             
-            // 新規投稿ボタン (Floating Action Button)
-            Button {
-                showingCreatePost = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.title.bold())
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.blue)
-                    .clipShape(Circle())
-                    .shadow(radius: 5)
+            // 新規投稿ボタン
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button {
+                        showingCreatePost = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title.bold())
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(radius: 5)
+                    }
+                    .padding(24)
+                }
             }
-            .padding(24)
         }
         .task {
             if newsViewModel.articles.isEmpty {
@@ -110,6 +91,50 @@ struct MainFeedView: View {
         }
         .sheet(isPresented: $showingCreatePost) {
             CreatePostView(postViewModel: postViewModel)
+        }
+    }
+}
+
+struct NewsListView: View {
+    @ObservedObject var viewModel: NewsViewModel
+    
+    var body: some View {
+        if viewModel.isLoading && viewModel.articles.isEmpty {
+            ProgressView()
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(viewModel.articles) { article in
+                        NewsCard(article: article)
+                    }
+                }
+                .padding()
+            }
+            .refreshable {
+                await viewModel.loadNews()
+            }
+        }
+    }
+}
+
+struct PostListView: View {
+    @ObservedObject var viewModel: PostViewModel
+    
+    var body: some View {
+        if viewModel.isLoading && viewModel.posts.isEmpty {
+            ProgressView()
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(viewModel.posts) { post in
+                        UserPostCard(post: post)
+                    }
+                }
+                .padding()
+            }
+            .refreshable {
+                await viewModel.fetchPosts()
+            }
         }
     }
 }
@@ -211,50 +236,73 @@ struct NewsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let imageUrl = article.urlToImage, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 180)
-                        .clipped()
-                        .cornerRadius(12)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 180)
-                        .cornerRadius(12)
+                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 180)
+                            .clipped()
+                            .transition(.opacity)
+                    case .failure(_):
+                        Image(systemName: "photo")
+                            .font(.largeTitle)
+                            .foregroundColor(.gray.opacity(0.3))
+                            .frame(height: 180)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray.opacity(0.1))
+                    case .empty:
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.1))
+                            .frame(height: 180)
+                            .overlay(ProgressView())
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
+                .cornerRadius(12)
             }
             
-            Text(article.title)
-                .font(.headline)
-                .lineLimit(2)
-            
-            if let desc = article.description {
-                Text(desc)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
-            }
-            
-            HStack {
-                Text(article.source?.name ?? "Unknown Source")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                Spacer()
-                Text(formatDate(article.publishedAt))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(article.title)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                if let desc = article.description {
+                    Text(desc)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                }
+                
+                HStack {
+                    Text(article.source?.name ?? "Unknown")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(4)
+                    
+                    Spacer()
+                    
+                    Text(formatDate(article.publishedAt))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 4)
             }
         }
         .padding()
-        .background(.ultraThinMaterial) // Liquid Glass 効果
+        .background(.ultraThinMaterial)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.white.opacity(0.4), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
     }
     
     func formatDate(_ dateString: String) -> String {
