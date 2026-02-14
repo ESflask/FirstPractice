@@ -24,9 +24,21 @@ class PostViewModel: ObservableObject {
                 .order(by: "timestamp", descending: true)
                 .getDocuments()
             
-            self.posts = snapshot.documents.compactMap { doc in
-                try? doc.data(as: Post.self)
-            }
+            // バックグラウンドでデコード処理
+            let decodedPosts = await Task.detached(priority: .userInitiated) {
+                snapshot.documents.compactMap { doc -> Post? in
+                    guard var post = try? doc.data(as: Post.self) else { return nil }
+                    
+                    // Base64からUIImageへバックグラウンドで変換
+                    if let base64 = post.image_base64,
+                       let data = Data(base64Encoded: base64) {
+                        post.uiImage = UIImage(data: data)
+                    }
+                    return post
+                }
+            }.value
+            
+            self.posts = decodedPosts
         } catch {
             print("Error fetching posts: \(error)")
         }

@@ -34,8 +34,11 @@ class NewsService {
             throw URLError(.badServerResponse)
         }
         
-        let decoder = JSONDecoder()
-        let result = try decoder.decode(NewsResponse.self, from: data)
-        return result.articles
+        // デコード処理をバックグラウンドスレッドで実行
+        return try await Task.detached(priority: .userInitiated) {
+            let decoder = JSONDecoder()
+            let result = try decoder.decode(NewsResponse.self, from: data)
+            return result.articles
+        }.value
     }
 }

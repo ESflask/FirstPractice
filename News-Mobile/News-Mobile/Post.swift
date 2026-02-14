@@ -5,6 +5,7 @@
 
 import Foundation
 import FirebaseFirestore
+import UIKit
 
 struct Post: Codable, Identifiable {
     @DocumentID var id: String?
@@ -15,6 +16,13 @@ struct Post: Codable, Identifiable {
     var user_email: String
     var user_id: String?
     var timestamp: Timestamp?
+    
+    // UI表示用にデコード済みの画像を保持 (Codableからは除外)
+    var uiImage: UIImage? = nil
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, description, image, image_base64, user_email, user_id, timestamp
+    }
     
     // UI表示用の型識別
     var isUserPost: Bool { true }

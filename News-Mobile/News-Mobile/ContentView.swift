@@ -34,50 +34,49 @@ struct MainFeedView: View {
     @State private var showingCreatePost = false
     
     var body: some View {
-        ZStack {
-            // 背景のグラデーション
-            LinearGradient(colors: [.blue.opacity(0.2), .purple.opacity(0.1), .white],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            HeaderView()
             
-            VStack(spacing: 0) {
-                HeaderView()
+            ZStack {
+                // 背景
+                LinearGradient(colors: [.blue.opacity(0.1), .purple.opacity(0.05), .white],
+                               startPoint: .topLeading,
+                               endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
                 
-                // タブセレクター
-                Picker("カテゴリ", selection: $selectedTab) {
-                    Text("ニュース").tag(0)
-                    Text("投稿").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                
-                ZStack {
+                VStack(spacing: 0) {
+                    Picker("カテゴリ", selection: $selectedTab) {
+                        Text("ニュース").tag(0)
+                        Text("投稿").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    
                     if selectedTab == 0 {
                         NewsListView(viewModel: newsViewModel)
                     } else {
                         PostListView(viewModel: postViewModel)
                     }
                 }
-            }
-            
-            // 新規投稿ボタン
-            VStack {
-                Spacer()
-                HStack {
+                
+                // 投稿ボタン
+                VStack {
                     Spacer()
-                    Button {
-                        showingCreatePost = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title.bold())
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                            .shadow(radius: 5)
+                    HStack {
+                        Spacer()
+                        Button {
+                            showingCreatePost = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title.bold())
+                                .foregroundColor(.white)
+                                .padding(16)
+                                .background(Circle().fill(Color.blue))
+                                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                        }
+                        .padding(20)
                     }
-                    .padding(24)
                 }
             }
         }
@@ -159,9 +158,7 @@ struct UserPostCard: View {
                 }
             }
             
-            if let imageBase64 = post.image_base64,
-               let data = Data(base64Encoded: imageBase64),
-               let uiImage = UIImage(data: data) {
+            if let uiImage = post.uiImage {
                 Image(uiImage: uiImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -210,7 +207,7 @@ struct HeaderView: View {
     var body: some View {
         HStack {
             Text("News-Mobile")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
             Spacer()
             
             Menu {
@@ -220,13 +217,15 @@ struct HeaderView: View {
                     Label("ログアウト", systemImage: "rectangle.portrait.and.arrow.right")
                 }
             } label: {
-                Image(systemName: "person.circle")
+                Image(systemName: "person.circle.fill")
                     .font(.title2)
-                    .foregroundColor(.primary)
+                    .foregroundColor(.blue)
             }
         }
-        .padding()
-        .background(.ultraThinMaterial)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.9))
+        .overlay(Divider(), alignment: .bottom)
     }
 }
 
