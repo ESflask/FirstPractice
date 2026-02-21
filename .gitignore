@@ -41,5 +41,9 @@ Thumbs.db
 DerivedData/
 *.xcworkspace/xcuserdata/
 
+# Firebase / Google Services
+GoogleService-Info.plist
+*.plist
+
 # Firebase Admin SDK Key
 serviceAccountKey.json

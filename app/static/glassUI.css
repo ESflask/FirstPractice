@@ -276,6 +276,26 @@ body {
     object-fit: contain;
 }
 
+.about-icon {
+    color: inherit;
+    text-decoration: none;
+    font-size: 1.4rem;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.about-icon:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.2);
+}
+
 .action-area {
     display: flex;
     align-items: center;
