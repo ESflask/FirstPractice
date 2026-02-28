@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+import Combine
 import FirebaseCore
 
 
@@ -37,11 +37,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct News_MobileApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var themeManager = ThemeManager.shared
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(authViewModel)
+                .environmentObject(themeManager)
+                .preferredColorScheme(themeManager.selectedTheme.colorScheme)
         }
     }
 }

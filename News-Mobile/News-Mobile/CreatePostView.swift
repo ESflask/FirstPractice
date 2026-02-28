@@ -10,20 +10,18 @@ struct CreatePostView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var authViewModel: AuthViewModel
     @ObservedObject var postViewModel: PostViewModel
-    
+
     @State private var title = ""
     @State private var description = ""
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
-    
+
     var body: some View {
         NavigationView {
             ZStack {
-                LinearGradient(colors: [.blue.opacity(0.1), .white],
-                               startPoint: .topLeading,
-                               endPoint: .bottomTrailing)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 20) {
                     // 画像選択エリア
                     PhotosPicker(selection: $selectedItem, matching: .images) {
@@ -36,7 +34,7 @@ struct CreatePostView: View {
                                     .cornerRadius(12)
                             } else {
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(.ultraThinMaterial)
+                                    .fill(.regularMaterial)
                                     .frame(height: 200)
                                     .overlay(
                                         VStack {
@@ -57,17 +55,17 @@ struct CreatePostView: View {
                             }
                         }
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("タイトル", text: $title)
                             .padding()
-                            .background(.ultraThinMaterial)
+                            .background(.regularMaterial)
                             .cornerRadius(10)
-                        
+
                         TextEditor(text: $description)
                             .padding(8)
                             .frame(minHeight: 120)
-                            .background(.ultraThinMaterial)
+                            .background(.regularMaterial)
                             .cornerRadius(10)
                             .overlay(
                                 Group {
@@ -81,7 +79,7 @@ struct CreatePostView: View {
                                 alignment: .topLeading
                             )
                     }
-                    
+
                     Button {
                         Task {
                             let success = await postViewModel.createPost(
@@ -97,19 +95,19 @@ struct CreatePostView: View {
                     } label: {
                         if postViewModel.isLoading {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .progressViewStyle(CircularProgressViewStyle(tint: .primary))
                         } else {
                             Text("投稿する")
-                                .fontWeight(.bold)
+                                .fontWeight(.semibold)
                                 .frame(maxWidth: .infinity)
                         }
                     }
                     .padding()
-                    .background(title.isEmpty ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
+                    .background(.regularMaterial)
+                    .foregroundColor(.primary)
                     .cornerRadius(12)
                     .disabled(title.isEmpty || postViewModel.isLoading)
-                    
+
                     Spacer()
                 }
                 .padding()
@@ -118,9 +116,13 @@ struct CreatePostView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("キャンセル") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("キャンセル")
+                            .font(.body)
                     }
+                    .foregroundColor(.primary)
                 }
             }
         }

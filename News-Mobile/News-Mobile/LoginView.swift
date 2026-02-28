@@ -10,41 +10,39 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isSignUp = false
-    
+
     var body: some View {
         ZStack {
             // 背景
-            LinearGradient(colors: [.purple.opacity(0.3), .blue.opacity(0.3)],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
+            Color(.systemGroupedBackground)
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 25) {
                 Text(isSignUp ? "新規登録" : "ログイン")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 32, weight: .bold))
                     .padding(.bottom, 20)
-                
+
                 VStack(spacing: 15) {
                     TextField("メールアドレス", text: $email)
                         .padding()
-                        .background(.ultraThinMaterial)
+                        .background(.thickMaterial)
                         .cornerRadius(12)
                         .textInputAutocapitalization(.none)
                         .keyboardType(.emailAddress)
-                    
+
                     SecureField("パスワード", text: $password)
                         .padding()
-                        .background(.ultraThinMaterial)
+                        .background(.thickMaterial)
                         .cornerRadius(12)
                 }
                 .padding(.horizontal)
-                
+
                 if let error = viewModel.errorMessage {
                     Text(error)
                         .foregroundColor(.red)
                         .font(.caption)
                 }
-                
+
                 Button {
                     Task {
                         if isSignUp {
@@ -56,19 +54,19 @@ struct LoginView: View {
                 } label: {
                     if viewModel.isLoading {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .progressViewStyle(CircularProgressViewStyle(tint: .primary))
                     } else {
                         Text(isSignUp ? "登録する" : "ログインする")
-                            .fontWeight(.bold)
+                            .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
                     }
                 }
                 .padding()
-                .background(Color.blue.opacity(0.7))
-                .foregroundColor(.white)
+                .background(.thickMaterial)
+                .foregroundColor(.primary)
                 .cornerRadius(12)
                 .padding(.horizontal)
-                
+
                 Button {
                     isSignUp.toggle()
                 } label: {
@@ -76,14 +74,12 @@ struct LoginView: View {
                         .font(.footnote)
                         .foregroundColor(.secondary)
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 10)
             }
             .padding(30)
-            .background(.ultraThinMaterial)
+            .background(.regularMaterial)
             .cornerRadius(24)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
-            )
             .padding()
         }
     }
