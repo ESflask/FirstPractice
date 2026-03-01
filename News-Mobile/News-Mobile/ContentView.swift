@@ -83,84 +83,44 @@ enum FeedItem: Identifiable {
 struct HomeView: View {
     @ObservedObject var newsViewModel: NewsViewModel
     @ObservedObject var postViewModel: PostViewModel
+    @State private var showingCreatePost = false
+    @State private var searchText = ""
 
-            @State private var showingCreatePost = false
-            @State private var searchText = ""
-            @FocusState private var isFocused: Bool
-
-            var body: some View {
-                ZStack {
-                    // 背景
-                    Color(.systemGroupedBackground)
-                        .ignoresSafeArea()
-
-                    VStack(spacing: 0) {
-                        HeaderView()
-                            .padding(.top, 8)
-
-                        // 検索バーエリア
-                        HStack(spacing: 12) {
-                            HStack {
-                                Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.secondary)
-
-                                TextField("検索...", text: $searchText)
-                                    .focused($isFocused)
-                                    .submitLabel(.search)
-
-                                if !searchText.isEmpty {
-                                    Button {
-                                        searchText = ""
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                            .padding(10)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-                            if isFocused {
-                                Button("キャンセル") {
-                                    withAnimation {
-                                        searchText = ""
-                                        isFocused = false
-                                    }
-                                }
-                                .foregroundColor(.primary)
-                                .transition(.move(edge: .trailing).combined(with: .opacity))
-                            }
+    var body: some View {
+        NavigationStack {
+            UnifiedFeedView(
+                newsViewModel: newsViewModel,
+                postViewModel: postViewModel,
+                searchText: searchText
+            )
+            .navigationTitle("News-Mobile")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button(role: .destructive) {
+                            // アクション定義のみ
+                        } label: {
+                            Label("ログアウト", systemImage: "rectangle.portrait.and.arrow.right")
                         }
-                        .padding(.horizontal)
-                        .padding(.bottom, 8)
-                        .animation(.spring(), value: isFocused)
-
-                        // 統合タイムライン
-                        UnifiedFeedView(
-                            newsViewModel: newsViewModel,
-                            postViewModel: postViewModel,
-                            searchText: searchText
-                        )
-                    }            // 投稿ボタン (Floating Glass Action Button)
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button {
-                        showingCreatePost = true
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 24, weight: .semibold))
+                        Image(systemName: "person.circle.fill")
+                            .font(.title3)
                             .foregroundColor(.primary)
-                            .frame(width: 56, height: 56)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 10)
                     }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
                 }
+            }
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "記事を検索")
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    showingCreatePost = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .medium))
+                        .frame(width: 52, height: 52)
+                }
+                .glassEffect(.regular.interactive(), in: .circle)
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
             }
         }
         .task {
@@ -173,6 +133,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingCreatePost) {
             CreatePostView(postViewModel: postViewModel)
+                .presentationBackground(.clear)
         }
     }
 }
@@ -221,7 +182,7 @@ struct UnifiedFeedView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
-                .padding(.bottom, 100)
+                .padding(.bottom, 20)
             }
             .refreshable {
                 await newsViewModel.loadNews()
@@ -233,6 +194,7 @@ struct UnifiedFeedView: View {
 
 struct SettingsView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var themeManager: ThemeManager
 
     var body: some View {
         NavigationView {
@@ -255,8 +217,11 @@ struct SettingsView: View {
                 }
 
                 Section(header: Text("アプリ設定")) {
-                    Text("テーマ設定 (Coming Soon)")
-                        .foregroundColor(.secondary)
+                    Picker("テーマ設定", selection: $themeManager.selectedTheme) {
+                        Text("ライト").tag(ThemeMode.light)
+                        Text("ダーク").tag(ThemeMode.dark)
+                        Text("システム").tag(ThemeMode.system)
+                    }
                 }
 
                 Section(header: Text("情報")) {
@@ -445,6 +410,7 @@ struct NewsCard: View {
         return displayFormatter.string(from: date)
     }
 }
+
 
 #Preview {
     ContentView()

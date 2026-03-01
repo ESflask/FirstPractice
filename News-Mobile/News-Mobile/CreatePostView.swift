@@ -17,11 +17,8 @@ struct CreatePostView: View {
     @State private var selectedImage: UIImage?
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color(.systemGroupedBackground)
-                    .ignoresSafeArea()
-
+        NavigationStack {
+            ScrollView {
                 VStack(spacing: 20) {
                     // 画像選択エリア
                     PhotosPicker(selection: $selectedItem, matching: .images) {
@@ -31,19 +28,18 @@ struct CreatePostView: View {
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
                                     .frame(height: 200)
-                                    .cornerRadius(12)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             } else {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(.regularMaterial)
-                                    .frame(height: 200)
-                                    .overlay(
-                                        VStack {
-                                            Image(systemName: "photo.on.rectangle.angled")
-                                                .font(.largeTitle)
-                                            Text("画像を選択")
-                                        }
-                                        .foregroundColor(.secondary)
-                                    )
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo.on.rectangle.angled")
+                                        .font(.largeTitle)
+                                    Text("画像を選択")
+                                        .font(.subheadline)
+                                }
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 200)
+                                .glassEffect(.regular, in: .rect(cornerRadius: 16))
                             }
                         }
                     }
@@ -56,30 +52,30 @@ struct CreatePostView: View {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    // 入力フィールド
+                    VStack(alignment: .leading, spacing: 12) {
                         TextField("タイトル", text: $title)
                             .padding()
-                            .background(.regularMaterial)
-                            .cornerRadius(10)
+                            .glassEffect(.regular, in: .rect(cornerRadius: 12))
 
-                        TextEditor(text: $description)
-                            .padding(8)
-                            .frame(minHeight: 120)
-                            .background(.regularMaterial)
-                            .cornerRadius(10)
-                            .overlay(
-                                Group {
-                                    if description.isEmpty {
-                                        Text("内容を入力してください...")
-                                            .foregroundColor(.secondary.opacity(0.5))
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 16)
-                                    }
-                                },
-                                alignment: .topLeading
-                            )
+                        ZStack(alignment: .topLeading) {
+                            TextEditor(text: $description)
+                                .padding(8)
+                                .frame(minHeight: 120)
+                                .scrollContentBackground(.hidden)
+
+                            if description.isEmpty {
+                                Text("内容を入力してください...")
+                                    .foregroundStyle(.secondary.opacity(0.5))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 16)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                        .glassEffect(.regular, in: .rect(cornerRadius: 12))
                     }
 
+                    // 投稿ボタン
                     Button {
                         Task {
                             let success = await postViewModel.createPost(
@@ -96,33 +92,34 @@ struct CreatePostView: View {
                         if postViewModel.isLoading {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .primary))
+                                .frame(maxWidth: .infinity)
+                                .padding()
                         } else {
                             Text("投稿する")
                                 .fontWeight(.semibold)
                                 .frame(maxWidth: .infinity)
+                                .padding()
                         }
                     }
-                    .padding()
-                    .background(.regularMaterial)
-                    .foregroundColor(.primary)
-                    .cornerRadius(12)
+                    .glassEffect(.regular.interactive(), in: .capsule)
                     .disabled(title.isEmpty || postViewModel.isLoading)
-
-                    Spacer()
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .scrollContentBackground(.hidden)
+            .background(.clear)
             .navigationTitle("新規投稿")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
+                    Button("キャンセル") {
                         dismiss()
-                    } label: {
-                        Text("キャンセル")
-                            .font(.body)
                     }
-                    .foregroundColor(.primary)
                 }
             }
         }

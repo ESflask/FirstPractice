@@ -1,6 +1,4 @@
-import json
 import os
-from datetime import datetime
 
 import firebase_admin
 from dotenv import load_dotenv
@@ -45,10 +43,11 @@ def create_app():
 
     # Initialize Firestore Client
     try:
-        app.db = firestore.client()
+        # Store in app.config to avoid direct attribute assignment issues
+        app.config["FIREBASE_DB"] = firestore.client()
     except Exception as e:
         print(f"Failed to initialize Firestore client: {e}")
-        app.db = None
+        app.config["FIREBASE_DB"] = None
 
     # --- Register Blueprints ---
     from app.routes.admin import admin_bp
