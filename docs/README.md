@@ -119,8 +119,8 @@ flaskdev/
 
 - **効率性:** 無料版APIの制限を考慮し、自動更新は行わず、ユーザーが「APIを更新」ボタンを押した時のみリクエストを送信する設計にしています。これによりトークン消費を抑えています。
 - **安全性:** AIを活用した開発プロセスを `docs/agents.md` に記録し、意図しないコード変更を防ぐためのガイドラインを設けています。
-<img width="585" height="1266" alt="B209767B-1099-4F94-8696-95E0088393AF" src="https://github.com/user-attachments/assets/4052e8c5-e5f7-4137-95eb-906c533e57eb" />
-<img width="585" height="1266" alt="50578BDE-7B73-4A05-B36A-51D166B339F2" src="https://github.com/user-attachments/assets/17befa85-3f4b-4ed0-9e40-e184d1a49885" />
+<img width="292.5" height="633" alt="B209767B-1099-4F94-8696-95E0088393AF" src="https://github.com/user-attachments/assets/4052e8c5-e5f7-4137-95eb-906c533e57eb" />
+<img width="292.5" height="633" alt="50578BDE-7B73-4A05-B36A-51D166B339F2" src="https://github.com/user-attachments/assets/17befa85-3f4b-4ed0-9e40-e184d1a49885" />
 
 ## 今後の改善案
 
