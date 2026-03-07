@@ -125,7 +125,7 @@ struct HomeView: View {
         }
         .task {
             if newsViewModel.articles.isEmpty {
-                await newsViewModel.loadNews()
+                await newsViewModel.loadNews(lang: themeManager.language.rawValue)
             }
             if postViewModel.posts.isEmpty {
                 await postViewModel.fetchPosts()
@@ -141,6 +141,7 @@ struct HomeView: View {
 struct UnifiedFeedView: View {
     @ObservedObject var newsViewModel: NewsViewModel
     @ObservedObject var postViewModel: PostViewModel
+    @EnvironmentObject var themeManager: ThemeManager
     var searchText: String
 
     var combinedFeed: [FeedItem] {
@@ -185,7 +186,7 @@ struct UnifiedFeedView: View {
                 .padding(.bottom, 20)
             }
             .refreshable {
-                await newsViewModel.loadNews()
+                await newsViewModel.loadNews(lang: themeManager.language.rawValue)
                 await postViewModel.fetchPosts()
             }
         }
@@ -195,6 +196,15 @@ struct UnifiedFeedView: View {
 struct SettingsView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var themeManager: ThemeManager
+    @State private var showingResetAlert = false
+    @State private var alertMessage = ""
+    
+    @State private var showingEmailChangeAlert = false
+    @State private var newEmail = ""
+    @State private var passwordForEmailChange = ""
+    
+    @State private var showingDeleteAccountAlert = false
+    @State private var passwordForDelete = ""
 
     var body: some View {
         NavigationView {
@@ -204,15 +214,58 @@ struct SettingsView: View {
                         HStack {
                             Text("メールアドレス")
                             Spacer()
-                            Text(user.email ?? "")
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .trailing) {
+                                Text(user.email ?? "")
+                                    .foregroundColor(.secondary)
+                                if !authViewModel.isEmailVerified {
+                                    Text("未認証")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
                         }
                     }
-                    Button("パスワード変更") {
-                        // TODO: Implement
+
+                    if !authViewModel.isEmailVerified {
+                        Button("確認メールを送信") {
+                            Task {
+                                await authViewModel.sendEmailVerification()
+                                if let error = authViewModel.errorMessage {
+                                    alertMessage = error
+                                } else {
+                                    alertMessage = "確認メールを送信しました。メール内のリンクをクリックした後、「状態を更新」を押してください。"
+                                }
+                                showingResetAlert = true
+                            }
+                        }
+                        Button("認証状態を更新") {
+                            Task {
+                                await authViewModel.reloadUser()
+                            }
+                        }
+                    }
+                    
+                    Button("メールアドレスを変更") {
+                        newEmail = authViewModel.user?.email ?? ""
+                        showingEmailChangeAlert = true
+                    }
+                    
+                    Button("パスワード再設定メールを送信") {
+                        Task {
+                            await authViewModel.sendPasswordReset()
+                            if let error = authViewModel.errorMessage {
+                                alertMessage = error
+                            } else {
+                                alertMessage = "パスワード再設定用のメールを送信しました。メールを確認してください。"
+                            }
+                            showingResetAlert = true
+                        }
                     }
                     Button("ログアウト", role: .destructive) {
                         authViewModel.signOut()
+                    }
+                    Button("アカウントを削除", role: .destructive) {
+                        showingDeleteAccountAlert = true
                     }
                 }
 
@@ -221,6 +274,17 @@ struct SettingsView: View {
                         Text("ライト").tag(ThemeMode.light)
                         Text("ダーク").tag(ThemeMode.dark)
                         Text("システム").tag(ThemeMode.system)
+                    }
+                    
+                    Picker("言語 / Language", selection: $themeManager.language) {
+                        ForEach(AppLanguage.allCases) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .onChange(of: themeManager.language) { _ in
+                        Task {
+                            await newsViewModel.loadNews(lang: themeManager.language.rawValue)
+                        }
                     }
                 }
 
@@ -235,6 +299,48 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .listStyle(.insetGrouped)
+            // 一般通知アラート
+            .alert("通知", isPresented: $showingResetAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
+            }
+            // メールアドレス変更アラート
+            .alert("メールアドレスを変更", isPresented: $showingEmailChangeAlert) {
+                TextField("新しいメールアドレス", text: $newEmail)
+                    .autocapitalization(.none)
+                SecureField("現在のパスワード", text: $passwordForEmailChange)
+                Button("キャンセル", role: .cancel) { }
+                Button("変更") {
+                    Task {
+                        await authViewModel.updateEmail(newEmail: newEmail, password: passwordForEmailChange)
+                        if let error = authViewModel.errorMessage {
+                            alertMessage = error
+                        } else {
+                            alertMessage = "新しいメールアドレスに確認用メールを送信しました。承認されるまで変更は完了しません。"
+                        }
+                        showingResetAlert = true
+                        passwordForEmailChange = ""
+                    }
+                }
+            }
+            // アカウント削除アラート
+            .alert("アカウントを削除しますか？", isPresented: $showingDeleteAccountAlert) {
+                SecureField("現在のパスワード", text: $passwordForDelete)
+                Button("キャンセル", role: .cancel) { }
+                Button("削除", role: .destructive) {
+                    Task {
+                        await authViewModel.deleteAccount(password: passwordForDelete)
+                        if let error = authViewModel.errorMessage {
+                            alertMessage = error
+                            showingResetAlert = true
+                        }
+                        passwordForDelete = ""
+                    }
+                }
+            } message: {
+                Text("この操作は取り消せません。本人確認のためパスワードを入力してください。")
+            }
         }
     }
 }

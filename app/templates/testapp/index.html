@@ -148,6 +148,27 @@
             </div>
         </header>
 
+        <!-- EMAIL VERIFICATION BANNER -->
+        <div id="email-verification-banner" class="liquidGlass-wrapper" style="display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 90%; max-width: 800px; padding: 12px 20px; border-radius: 12px; background: rgba(255, 59, 48, 0.15); border: 1px solid rgba(255, 59, 48, 0.3);">
+            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+            <div class="liquidGlass-text" style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.2rem;">⚠️</span>
+                    <span id="verification-text" style="font-size: 0.9rem; font-weight: 500;">メールアドレスが未認証です。機能が制限される場合があります。</span>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="glass-button liquidGlass-wrapper" onclick="resendVerificationEmail()" style="padding: 6px 15px; font-size: 0.8rem; background: rgba(255,255,255,0.2);">
+                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text">認証メールを送信</span>
+                    </button>
+                    <button class="glass-button liquidGlass-wrapper" onclick="location.reload()" style="padding: 6px 15px; font-size: 0.8rem; background: rgba(255,255,255,0.1);">
+                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text">更新</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- MAIN CONTENT -->
         <div class="container" id="articles-container" style="margin-top: 100px;">
             <!-- Welcome Banner for Guest -->
@@ -233,12 +254,39 @@
                         </div>
                     </div>
                     <div class="form-group"><label class="form-label" id="profile-label-email">メールアドレス</label><input type="email" class="form-input" id="profile-email" name="email" placeholder="email@example.com"></div>
+                    
                     <div class="form-section">
-                        <h3 class="form-section-title" id="profile-password-title">パスワード変更</h3>
-                        <div class="form-group"><label class="form-label" id="profile-label-current-password">現在のパスワード</label><input type="password" class="form-input" id="profile-current-password" name="current_password" placeholder="現在のパスワード"></div>
-                        <div class="form-group"><label class="form-label" id="profile-label-new-password">新しいパスワード</label><input type="password" class="form-input" id="profile-new-password" name="new_password" placeholder="新しいパスワード"></div>
-                        <div class="form-group"><label class="form-label" id="profile-label-confirm-password">パスワード確認</label><input type="password" class="form-input" id="profile-confirm-password" placeholder="新しいパスワードを再入力"></div>
+                        <h3 class="form-section-title">メールアドレス変更</h3>
+                        <p style="font-size: 0.8rem; margin-bottom: 10px; opacity: 0.7;">新しいメールアドレスを入力し、現在のパスワードで認証してください。</p>
+                        <div class="form-group"><input type="email" class="form-input" id="new-email-input" placeholder="新しいメールアドレス"></div>
+                        <div class="form-group"><input type="password" class="form-input" id="email-change-password" placeholder="現在のパスワード"></div>
+                        <button type="button" class="glass-button liquidGlass-wrapper" onclick="handleEmailChange()" style="width: 100%; padding: 10px;">
+                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text">メールアドレスを変更</span>
+                        </button>
                     </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title" id="profile-password-title">セキュリティ</h3>
+                        <p style="font-size: 0.9rem; margin-bottom: 15px; opacity: 0.8; color: var(--text-color, #fff);">
+                            パスワードを変更するには、登録済みのメールアドレスに再設定用リンクを送信します。
+                        </p>
+                        <button type="button" class="glass-button liquidGlass-wrapper" onclick="sendPasswordResetEmailToUser()" style="width: 100%; padding: 12px; margin-bottom: 20px;">
+                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text">再設定メールを送信</span>
+                        </button>
+                    </div>
+
+                    <div class="form-section" style="border-top: 1px solid rgba(255, 59, 48, 0.2); padding-top: 15px;">
+                        <h3 class="form-section-title" style="color: #ff3b30;">アカウントの削除</h3>
+                        <p style="font-size: 0.8rem; margin-bottom: 10px; opacity: 0.7;">この操作は取り消せません。パスワードを入力して実行してください。</p>
+                        <div class="form-group"><input type="password" class="form-input" id="delete-account-password" placeholder="現在のパスワード"></div>
+                        <button type="button" class="glass-button liquidGlass-wrapper" onclick="handleDeleteAccount()" style="width: 100%; padding: 10px; background: rgba(255, 59, 48, 0.1);">
+                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text" style="color: #ff3b30;">アカウントを完全に削除</span>
+                        </button>
+                    </div>
+
                     <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeProfileModal()" id="profile-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="profile-submit-btn">保存</button></div>
                 </form>
             </div>
@@ -329,11 +377,170 @@
         let currentDisplayedItems = []; // Holds data for all visible items (posts and articles)
 
         const translations = {
-            ja: { appTitle: 'ニュースリーダー', updateBtn: 'ニュースを更新', createPost: '➕ 投稿を作成', modalTitle: '投稿を作成', labelTitle: 'タイトル', labelDescription: '説明', labelImage: '画像', uploadText: '画像をアップロード', cancelBtn: 'キャンセル', submitBtn: '投稿する', readMore: '続きを読む', noImage: '画像なし', userPost: 'あなたの投稿', updating: '更新中...', noArticles: '記事が見つかりませんでした。', placeholderTitle: 'タイトルを入力...', placeholderDesc: '説明を入力...', sidebarHome: 'ホーム', sidebarFavorites: 'お気に入り', sidebarSettings: '設定', menuProfile: 'プロフィール設定', menuPrefs: '環境設定', menuLogout: 'ログアウト', menuLogin: 'ログイン', menuRegister: '新規登録', searchPlaceholder: '記事を検索...', searchBtn: '検索', loginTitle: 'ログイン', registerTitle: '新規登録', emailLabel: 'メールアドレス', passwordLabel: 'パスワード', confirmPasswordLabel: 'パスワード確認', profileTitle: 'プロフィール設定', profileIcon: 'プロフィールアイコン', profileEmail: 'メールアドレス', passwordChange: 'パスワード変更', currentPassword: '現在のパスワード', newPassword: '新しいパスワード', confirmPassword: 'パスワード確認', saveBtn: '保存', settingsTitle: '設定', langTitle: '言語', designTitle: 'デザイン', designDefault: 'Liquid Glass (デフォルト)', designLight: 'Clean Glass (軽量版)' },
-            en: { appTitle: 'News Reader', updateBtn: 'Update News API', createPost: '➕ Create Post', modalTitle: 'Create Post', labelTitle: 'Title', labelDescription: 'Description', labelImage: 'Image', uploadText: 'Upload Image', cancelBtn: 'Cancel', submitBtn: 'Submit', readMore: 'Read More', noImage: 'No Image', userPost: 'Your Post', updating: 'Updating...', noArticles: 'No articles found yet.', placeholderTitle: 'Enter title...', placeholderDesc: 'Enter description...', sidebarHome: 'Home', sidebarFavorites: 'Favorites', sidebarSettings: 'Settings', menuProfile: 'Profile Settings', menuPrefs: 'Preferences', menuLogout: 'Log Out', menuLogin: 'Login', menuRegister: 'Register', searchPlaceholder: 'Search articles...', searchBtn: 'Search', loginTitle: 'Login', registerTitle: 'Register', emailLabel: 'Email', passwordLabel: 'Password', confirmPasswordLabel: 'Confirm Password', profileTitle: 'Profile Settings', profileIcon: 'Profile Icon', profileEmail: 'Email', passwordChange: 'Change Password', currentPassword: 'Current Password', newPassword: 'New Password', confirmPassword: 'Confirm Password', saveBtn: 'Save', settingsTitle: 'Settings', langTitle: 'Language', designTitle: 'Design', designDefault: 'Liquid Glass (Default)', designLight: 'Clean Glass (Light)' }
+            ja: { 
+                appTitle: 'ニュースリーダー', 
+                updateBtn: 'ニュースを更新', 
+                createPost: '➕ 投稿を作成', 
+                modalTitle: '投稿を作成', 
+                labelTitle: 'タイトル', 
+                labelDescription: '説明', 
+                labelImage: '画像', 
+                uploadText: '画像をアップロード', 
+                cancelBtn: 'キャンセル', 
+                submitBtn: '投稿する', 
+                readMore: '続きを読む', 
+                noImage: '画像なし', 
+                userPost: 'あなたの投稿', 
+                updating: '更新中...', 
+                noArticles: '記事が見つかりませんでした。', 
+                placeholderTitle: 'タイトルを入力...', 
+                placeholderDesc: '説明を入力...', 
+                sidebarHome: 'ホーム', 
+                sidebarFavorites: 'お気に入り', 
+                sidebarSettings: '設定', 
+                menuProfile: 'プロフィール設定', 
+                menuPrefs: '環境設定', 
+                menuLogout: 'ログアウト', 
+                menuLogin: 'ログイン', 
+                menuRegister: '新規登録', 
+                searchPlaceholder: '記事を検索...', 
+                searchBtn: '検索', 
+                loginTitle: 'ログイン', 
+                registerTitle: '新規登録', 
+                emailLabel: 'メールアドレス', 
+                passwordLabel: 'パスワード', 
+                confirmPasswordLabel: 'パスワード確認', 
+                profileTitle: 'プロフィール設定', 
+                profileIcon: 'プロフィールアイコン', 
+                profileEmail: 'メールアドレス', 
+                passwordChange: 'パスワード変更', 
+                saveBtn: '保存', 
+                settingsTitle: '設定', 
+                langTitle: '言語', 
+                designTitle: 'デザイン', 
+                designDefault: 'Liquid Glass (デフォルト)', 
+                designLight: 'Clean Glass (軽量版)',
+                resetEmailSent: 'パスワード再設定メールを送信しました。メールフォルダを確認してください。',
+                resetEmailError: 'メール送信に失敗しました。'
+            },
+            en: { 
+                appTitle: 'News Reader', 
+                updateBtn: 'Update News API', 
+                createPost: '➕ Create Post', 
+                modalTitle: 'Create Post', 
+                labelTitle: 'Title', 
+                labelDescription: 'Description', 
+                labelImage: 'Image', 
+                uploadText: 'Upload Image', 
+                cancelBtn: 'Cancel', 
+                submitBtn: 'Submit', 
+                readMore: 'Read More', 
+                noImage: 'No Image', 
+                userPost: 'Your Post', 
+                updating: 'Updating...', 
+                noArticles: 'No articles found yet.', 
+                placeholderTitle: 'Enter title...', 
+                placeholderDesc: 'Enter description...', 
+                sidebarHome: 'Home', 
+                sidebarFavorites: 'Favorites', 
+                sidebarSettings: 'Settings', 
+                menuProfile: 'Profile Settings', 
+                menuPrefs: 'Preferences', 
+                menuLogout: 'Log Out', 
+                menuLogin: 'Login', 
+                menuRegister: 'Register', 
+                searchPlaceholder: 'Search articles...', 
+                searchBtn: 'Search', 
+                loginTitle: 'Login', 
+                registerTitle: 'Register', 
+                emailLabel: 'Email', 
+                passwordLabel: 'Password', 
+                confirmPasswordLabel: 'Confirm Password', 
+                profileTitle: 'Profile Settings', 
+                profileIcon: 'Profile Icon', 
+                profileEmail: 'Email', 
+                passwordChange: 'Change Password', 
+                saveBtn: 'Save', 
+                settingsTitle: 'Settings', 
+                langTitle: 'Language', 
+                designTitle: 'Design', 
+                designDefault: 'Liquid Glass (Default)', 
+                designLight: 'Clean Glass (Light)',
+                resetEmailSent: 'Password reset email sent. Please check your inbox.',
+                resetEmailError: 'Failed to send reset email.'
+            }
         };
 
         // ===== CORE FUNCTIONS =====
+        async function sendPasswordResetEmailToUser() {
+            if (!currentUser || !currentUser.email) return;
+            const t = translations[currentLang];
+            try {
+                await firebaseAuth.sendPasswordResetEmail(currentUser.email);
+                alert(t.resetEmailSent);
+                closeProfileModal();
+            } catch (error) {
+                console.error('Password reset error:', error);
+                alert(t.resetEmailError + "\n" + error.message);
+            }
+        }
+
+        async function handleEmailChange() {
+            const newEmail = document.getElementById('new-email-input').value.trim();
+            const password = document.getElementById('email-change-password').value;
+            const user = firebaseAuth.currentUser;
+
+            if (!newEmail || !password) {
+                alert("新しいメールアドレスとパスワードを入力してください。");
+                return;
+            }
+
+            try {
+                // 再認証
+                const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+                await user.reauthenticateWithCredential(credential);
+                
+                // メール変更 (確認メール送信)
+                await user.verifyBeforeUpdateEmail(newEmail);
+                alert("新しいメールアドレスに確認用メールを送信しました。リンクをクリックして承認してください。");
+                closeProfileModal();
+            } catch (error) {
+                console.error("Email change error:", error);
+                alert("エラーが発生しました: " + error.message);
+            }
+        }
+
+        async function handleDeleteAccount() {
+            const password = document.getElementById('delete-account-password').value;
+            const user = firebaseAuth.currentUser;
+
+            if (!password) {
+                alert("本人確認のためパスワードを入力してください。");
+                return;
+            }
+
+            if (!confirm("本当にアカウントを削除しますか？この操作は取り消せません。")) {
+                return;
+            }
+
+            try {
+                // 再認証
+                const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+                await user.reauthenticateWithCredential(credential);
+                
+                // Firestoreのユーザーデータ削除 (Backend API経由で行うことも検討)
+                // 今回はAuth削除のみ実装
+                await user.delete();
+                
+                // サーバーセッションのクリア
+                await fetch('/api/auth/logout', { method: 'POST' });
+                alert("アカウントを削除しました。");
+                location.reload();
+            } catch (error) {
+                console.error("Delete account error:", error);
+                alert("エラーが発生しました: " + error.message);
+            }
+        }
         function setLanguage(lang) {
             currentLang = lang;
             localStorage.setItem('language', lang);
@@ -357,7 +564,7 @@
             document.getElementById('settings-lang-title').textContent = t.langTitle;
             document.getElementById('settings-design-title').textContent = t.designTitle;
             
-            if (document.readyState === 'complete') loadAllContent();
+            // Note: loadAllContent is now handled by the initialization flow to prevent duplicates
         }
 
         function setDesign(design) {
@@ -471,16 +678,31 @@
         // ===== DATA FETCHING & RENDERING =====
         async function loadAllContent() {
             const container = document.getElementById('articles-container');
+            const updateBtn = document.getElementById('api-update-btn');
             const t = translations[currentLang];
+            
+            // 防止：多重クリック
+            if (updateBtn.disabled) return;
+            
             container.innerHTML = `<div class="no-articles"><p>${t.updating}</p></div>`;
+            updateBtn.disabled = true;
+            const originalText = document.getElementById('update-btn-text').textContent;
+            document.getElementById('update-btn-text').textContent = t.updating;
+
             try {
-                const [postsRes, articlesRes] = await Promise.all([ fetch('/api/posts'), fetch(`/api/update?lang=${currentLang}`) ]);
+                const [postsRes, articlesRes] = await Promise.all([ 
+                    fetch('/api/posts'), 
+                    fetch(`/api/update?lang=${currentLang}`) 
+                ]);
                 const posts = await postsRes.json();
                 const articles = await articlesRes.json();
                 renderAllContent(posts, articles, container);
             } catch (error) {
                 console.error('Error loading content:', error);
                 container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
+            } finally {
+                updateBtn.disabled = false;
+                document.getElementById('update-btn-text').textContent = originalText;
             }
         }
 
@@ -579,6 +801,17 @@
             }
         }
 
+        async function resendVerificationEmail() {
+            if (!firebaseAuth.currentUser) return;
+            try {
+                await firebaseAuth.currentUser.sendEmailVerification();
+                alert("認証メールを送信しました。メールを確認してください。");
+            } catch (error) {
+                console.error("Verification error:", error);
+                alert("エラーが発生しました: " + error.message);
+            }
+        }
+
         function updateUIForAuth() {
             const loggedInMenu = document.getElementById('menu-logged-in');
             const loggedOutMenu = document.getElementById('menu-logged-out');
@@ -587,11 +820,20 @@
             const guestButtons = document.getElementById('guest-buttons');
             const logoutBtn = document.getElementById('top-logout-btn');
             const welcomeBanner = document.getElementById('guest-welcome-banner');
+            const verificationBanner = document.getElementById('email-verification-banner');
 
             if (currentUser) {
                 // Logged In State
                 loggedInMenu.style.display = 'block';
                 loggedOutMenu.style.display = 'none';
+                
+                // Email Verification Check
+                const firebaseUser = firebaseAuth.currentUser;
+                if (firebaseUser && !firebaseUser.emailVerified) {
+                    verificationBanner.style.display = 'block';
+                } else {
+                    verificationBanner.style.display = 'none';
+                }
                 
                 // Top bar buttons
                 if (authButtons) authButtons.style.display = 'flex'; // Container visible
@@ -606,6 +848,7 @@
                 // Logged Out State
                 loggedInMenu.style.display = 'none';
                 loggedOutMenu.style.display = 'block';
+                verificationBanner.style.display = 'none';
                 
                 // Top bar buttons
                 if (authButtons) authButtons.style.display = 'flex';
@@ -677,16 +920,20 @@
             } 
             catch (error) { console.error('Logout error:', error); }
         }
+// ===== EVENT LISTENERS & INITIALIZATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+    // デザインとUIの初期化
+    setDesign(currentDesign);
+    setLanguage(currentLang);
 
-        // ===== EVENT LISTENERS & INITIALIZATION =====
-        document.addEventListener('DOMContentLoaded', () => {
-            setLanguage(currentLang);
-            setDesign(currentDesign);
-            checkAuthStatus().then(() => loadAllContent());
+    // 認証状態の確認とコンテンツの読み込み（一回のみ実行）
+    await checkAuthStatus();
+    await loadAllContent();
 
-            document.getElementById('createPostForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/posts', 'POST', async () => { closeCreatePostModal(); await loadAllContent(); }); });
-            
-            // Login Handler
+    document.getElementById('createPostForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/posts', 'POST', async () => { closeCreatePostModal(); await loadAllContent(); }); });
+
+    // Login Handler
+...
             document.getElementById('loginForm').addEventListener('submit', async e => { 
                 e.preventDefault(); 
                 const email = document.getElementById('login-email').value;

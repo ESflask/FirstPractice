@@ -6,20 +6,18 @@
 import Foundation
 
 class NewsService {
-    // FIXME: 自身のNews APIキーを設定してください
-    private let apiKey = "eec9d227dcdf47b9bfa9b53a9f8d4042"
-    private let baseURL = "https://newsapi.org/v2/everything"
+    // FlaskサーバーのベースURL (開発環境)
+    // 実機テスト時はPCのIPアドレス、またはRenderなどのデプロイ済みURLに変更してください
+    private let baseURL = "http://localhost:5001/api/update"
     
-    func fetchNews(query: String = "Apple") async throws -> [NewsArticle] {
+    func fetchNews(query: String = "Apple", lang: String = "ja") async throws -> [NewsArticle] {
         guard var components = URLComponents(string: baseURL) else {
             throw URLError(.badURL)
         }
         
         components.queryItems = [
             URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "sortBy", value: "publishedAt"),
-            URLQueryItem(name: "pageSize", value: "20"),
-            URLQueryItem(name: "apiKey", value: apiKey)
+            URLQueryItem(name: "lang", value: lang)
         ]
         
         guard let url = components.url else {
@@ -30,15 +28,16 @@ class NewsService {
         
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            print("News API error: Status Code \(statusCode)")
+            print("Server API error: Status Code \(statusCode)")
             throw URLError(.badServerResponse)
         }
         
-        // デコード処理をバックグラウンドスレッドで実行
+        // デコード処理
         return try await Task.detached(priority: .userInitiated) {
             let decoder = JSONDecoder()
-            let result = try decoder.decode(NewsResponse.self, from: data)
-            return result.articles
+            // サーバーからのレスポンスは[NewsArticle]の配列であることを想定
+            let articles = try decoder.decode([NewsArticle].self, from: data)
+            return articles
         }.value
     }
 }

@@ -96,6 +96,7 @@ def fetch_full_articles(
     from_ts: str | None = None,
     to_ts: str | None = None,
     page_size: int = 5,
+    language: str = "en",
 ):
     """
     ニュース記事を取得し、記事全体（タイトル、説明、URLなど）のリストを返す
@@ -107,6 +108,7 @@ def fetch_full_articles(
             "sortBy": "publishedAt",  # 最新の記事順に並べる
             "pageSize": page_size,
             "apiKey": API_KEY,
+            "language": language,
         }
         
         # 日時範囲が指定されている場合のみ追加
