@@ -23,7 +23,7 @@ def login():
         email = decoded_token.get('email')
 
         # Firestoreからユーザー情報を取得、なければ作成
-        db = current_app.db
+        db = current_app.config.get("FIREBASE_DB")
         if db:
             user_ref = db.collection('users').document(uid)
             user_doc = user_ref.get()
@@ -75,7 +75,7 @@ def get_current_user():
         return jsonify({"logged_in": False}), 200
     
     # Firestoreから最新情報を取得
-    db = current_app.db
+    db = current_app.config.get("FIREBASE_DB")
     user_data = {}
     if db:
         try:
@@ -116,7 +116,7 @@ def update_profile():
     if not user_id:
         return jsonify({"error": "Not authenticated"}), 401
 
-    db = current_app.db
+    db = current_app.config.get("FIREBASE_DB")
     if not db:
         return jsonify({"error": "Database error"}), 500
 

@@ -1,7 +1,11 @@
-# APIを多用した多機能ニュースアプリケーション
+# APIを多用した多機能ニュースアプリケーション (Web & iOS)
 
-これは、複数のグローバルソース（NewsAPI、GNews、NewsData.io）からニュースを集約し、DeepLを使用してシームレスに翻訳するとともに、ユーザーがコンテンツを共有・議論できるソーシャルプラットフォームを提供するFlaskベースのWebアプリケーションです。GitHub内で模倣コードを公開されていた方の簡易的な Liquid Glass（リキッドグラス）UIデザインを採用しています。
-コーディング作業は主にaiエージェントにmarkdownを使って指示をして、なるべく意向にあった機能を目指しました
+これは、複数のグローバルソース（NewsAPI、GNews、NewsData.io）からニュースを集約し、DeepLを使用してシームレスに翻訳するとともに、ユーザーがコンテンツを共有・議論できるソーシャルプラットフォームです。
+**Web版 (Flask)** と **iOS版 (SwiftUI)** のクロスプラットフォームで動作し、Firebaseをバックエンドとしてデータをリアルタイムに共有します。
+
+GitHub内で公開されていたLiquid Glass（リキッドグラス）UIデザインを採用しつつ、パフォーマンスを考慮した軽量モードも実装しました。
+コーディング作業は主にAIエージェントに指示を行い、意向に沿った機能を実装しています。
+
 ## 機能
 
 ### スマートニュース集約
@@ -13,34 +17,38 @@
 - **DeepL統合:** 英語と日本語の間で高品質な翻訳を提供します。
 - **双方向対応:** タイトルと説明文の「英語→日本語」および「日本語→英語」の翻訳をサポートしています。
 
-### ユーザーシステム
-- **認証機能:** 安全なアカウント登録とログインシステム。
-- **プロフィール:** アバターアップロード機能を備えたユーザープロフィール。
+### クロスプラットフォーム・ユーザーシステム
+- **Firebase統合:** **Authentication** による安全なログインと、**Firestore** によるリアルタイムデータ同期。
+- **データ共有:** Web版で作成した投稿をiOS版で閲覧したり、その逆も可能です。アカウント情報も共通化されています。
+- **プロフィール:** アバター画像のアップロードとプロフィール管理。
 - **投稿機能:** ユーザーはタイトル、説明、画像付きで独自の投稿を作成できます。
-- **内部検索:** 外部ニュースAPIと内部ユーザー投稿の両方を一度に検索できる統合検索機能。
 
-### UI/UX
+### UI/UX (Web版)
 - **Liquid Glass デザイン:** 透明感とぼかし効果を活用した、特徴的なグラスモーフィズムデザイン。
+- **軽量モード (Clean Glass):** Chrome等でのパフォーマンス低下を防ぐため、アニメーションを排除した軽量でシンプルなデザインモードを搭載（設定から切り替え可能）。
 - **レスポンシブ:** 様々な画面サイズに適応するカードベースのレイアウト。
-- **動的更新:** APIの利用枠を節約するため、自動更新ではなく「APIを更新」ボタンによるオンデマンド更新を採用しています。
 
-### モバイル統合
-- **iOSアプリ:** ネイティブモバイル体験を提供するSwiftUIプロジェクト（`News-Mobile/`）が含まれています（現在開発中）。
+### モバイル統合 (iOS)
+- **Native Liquid Glass:** iOS標準のMaterial素材を生かした、ネイティブなグラスモーフィズムデザイン。
+- **統合フィード:** ニュース記事とユーザー投稿がシームレスに混在するタイムライン。
+- **画像最適化:** 投稿画像の自動リサイズとアスペクト比保持表示。
 
 ## 技術スタック
 
-- **バックエンド:** Flask, Flask-SQLAlchemy
-- **データベース:** SQLite (デフォルト) / PostgreSQL (設定により対応可能)
+- **バックエンド:** Flask (API Gateway / Proxy), Firebase Admin SDK
+- **データベース:** Google Cloud Firestore (NoSQL)
+- **認証:** Firebase Authentication
 - **HTTPクライアント:** `requests`, `httpx` (非同期処理用)
-- **非同期処理:** `concurrent.futures.ThreadPoolExecutor`
-- **フロントエンド:** Jinja2 Templates, CSS (Glassmorphism), JavaScript
-- **デプロイ:** `gunicorn` でのデプロイに対応可能な構成
+- **フロントエンド (Web):** HTML5, CSS3, Vanilla JS, Firebase JS SDK
+- **モバイル (iOS):** SwiftUI, Firebase iOS SDK
+- **デプロイ:** `gunicorn` (Web)
 
-## セットアップとインストール
+## セットアップとインストール (Web版)
 
 ### 1. 前提条件
 - Python 3.11以上
 - NewsAPI, GNews, NewsData.io, DeepL のAPIキー
+- Firebaseプロジェクトの設定 (`firebase-adminsdk.json` およびウェブアプリ設定)
 
 ### 2. インストール
 
@@ -59,20 +67,18 @@ pip install -r requirements.txt
 ```env
 # Flask設定
 SECRET_KEY=your_secret_key_here
-DATABASE_URL=sqlite:///project.db
 
 # APIキー
 NEWSAPI_KEY=your_newsapi_key_here
 GNEWS_API_KEY=your_gnews_api_key_here
 NEWSDATA_IO_API_KEY=your_newsdata_io_api_key_here
 DEEPL_AUTH_KEY=your_deepl_auth_key_here
+
+# Firebase設定 (Admin SDKのパスなど)
+FIREBASE_CREDENTIALS_PATH=path/to/firebase-adminsdk.json
 ```
 
-### 4. データベースの初期化
-
-初回実行時、アプリケーションは自動的にデータベースを初期化し、`data/users.json` および `data/posts.json` が存在する場合はそこからデータを移行します。
-
-### 5. アプリケーションの起動
+### 4. アプリケーションの起動
 
 ```bash
 python run.py
@@ -87,45 +93,34 @@ flask run --host=0.0.0.0 --port=8000
 ```
 flaskdev/
 ├── app/
-│   ├── __init__.py        # アプリケーションファクトリ & DB設定
-│   ├── models.py          # SQLAlchemyモデル (User, Post)
-│   ├── routes/            # Blueprints (ルーティング)
-│   │   ├── main.py        # メインページ & 検索API
-│   │   ├── auth.py        # 認証機能
-│   │   ├── posts.py       # ユーザー投稿機能
-│   │   └── admin.py       # 管理画面
+│   ├── __init__.py        # アプリケーションファクトリ & Firebase初期化
+│   ├── models.py          # (旧) SQLAlchemyモデル -> Firestore辞書定義へ移行
+│   ├── routes/            # APIエンドポイント
+│   │   ├── main.py        # ニュース取得・検索
+│   │   ├── auth.py        # 認証連携
+│   │   └── posts.py       # 投稿API (Firestore連携)
 │   ├── services/          # 外部API連携サービス
-│   │   ├── aggregator.py  # ニュース取得と翻訳のオーケストレーション
-│   │   ├── deepl.py       # DeepL API ラッパー
-│   │   ├── newsapi.py     # NewsAPI ラッパー
-│   │   ├── gnews.py       # GNews ラッパー
-│   │   └── newsdata.py    # NewsData.io ラッパー
-│   ├── static/            # CSS, 画像, アップロードファイル
-│   └── templates/         # HTMLテンプレート
-├── data/                  # 初期シードデータ (JSON)
+│   │   ├── aggregator.py  # ニュース統合ロジック
+│   │   └── deepl.py       # 翻訳サービス
+│   ├── static/            # CSS (glassUI.css, lightweightUI.css), 画像
+│   └── templates/         # HTML (Firebase JS SDK含む)
+├── data/                  # (旧) 初期データ
 ├── docs/                  # ドキュメント類
-├── instance/              # SQLiteデータベース
-├── News-Mobile/           # iOS SwiftUI プロジェクト
-├── tests/                 # ユニットテスト
+├── News-Mobile/           # iOS SwiftUI プロジェクト (Firebase連携済み)
 ├── requirements.txt       # Python依存関係
 └── run.py                 # エントリーポイント
 ```
 
 ## デザインと工夫
 
-- **既存のUI:** (Web版において)「Liquid Glass」デザインは、透明度とぼかし効果を使用して奥行きを作り出しています。タイトル画像が見えにくくならないよう、文字の縁取りなどの工夫を施しています。(既存デザイン、Chromeではまだ非常に負荷がかかる)
-![DEF61DBE-8D18-4D1F-BB43-11D3575111B6_1_201_a](https://github.com/user-attachments/assets/3fb45faf-70db-4bc9-a21e-565ea96b5d9a)
-- **新しい軽量なUI:** Safariでは割と快適に動いたもののChromeなどではかなり重かったので新しいデザインを作ることにしました。動的アニメーションは一切なしで、Chromeでも快適に動くでしょう。
-
-- **効率性:** 無料版APIの制限を考慮し、自動更新は行わず、ユーザーが「APIを更新」ボタンを押した時のみリクエストを送信する設計にしています。これによりトークン消費を抑えています。
-- **安全性:** AIを活用した開発プロセスを `docs/agents.md` に記録し、意図しないコード変更を防ぐためのガイドラインを設けています。
-<img width="292.5" height="633" alt="B209767B-1099-4F94-8696-95E0088393AF" src="https://github.com/user-attachments/assets/4052e8c5-e5f7-4137-95eb-906c533e57eb" />
-<img width="292.5" height="633" alt="50578BDE-7B73-4A05-B36A-51D166B339F2" src="https://github.com/user-attachments/assets/17befa85-3f4b-4ed0-9e40-e184d1a49885" />
+- **Web UI:** 重厚な「Liquid Glass」と軽快な「Clean Glass」の2つのテーマを実装し、ユーザーの環境に合わせて選択可能にしました。
+- **iOS UI:** SwiftUIの `UltraThinMaterial` を活用し、Web版の世界観をネイティブアプリとして再現しました。
+- **効率性:** API利用枠節約のため、ニュース更新はオンデマンド方式を採用。
+- **安全性:** 開発プロセスにAIエージェントガイドライン (`docs/agents.md`) を導入し、品質を維持しています。
 
 ## 今後の改善案
 
-- **エラーハンドリング:** API制限やネットワークエラー時のUIフィードバックの強化。　　　完了(deeplAPIが記事を翻訳できなかった際に元の言語の記事をnewsのAPIにそのまま取得させるなどの工夫)
-- **ページネーション:** ニュースAPIからの大量の結果に対するページ送り機能の実装。　　　
-- **AI要約:** OpenAI API等を活用した記事の要約機能の追加。→ アカウントが未成年の為、APIキーを作成できず、現在は保留
-- **モバイルアプリ:** バックエンドと連携するSwiftUIアプリの完全実装。　　　　完了
-- **Firebase接続** iOSアプリも作っていく予定なので、firebaseにアカウント情報などが保存されるようにしたい 完了
+- **エラーハンドリング:** API制限時のフォールバック処理強化（完了）。
+- **ページネーション:** ニュースAPIからの大量の結果に対するページ送り機能。
+- **iOSウィジェット:** ホーム画面でのニュース表示。
+- **プッシュ通知:** 新着ニュースやコメントの通知（FCM利用）。

@@ -3,6 +3,8 @@
 /* Base overrides */
 body.lightweight-mode {
     display: block; /* Remove flex from body */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    width: 100vw;
 }
 
 /* Hide Sidebar and Liquid Glass Elements */
@@ -25,6 +27,12 @@ body.lightweight-mode .liquidGlass-wrapper {
     border: 1px solid rgba(0, 0, 0, 0.05);
     transition: none !important;
     animation: none !important;
+    transform: none !important;
+}
+
+body.lightweight-mode .liquidGlass-wrapper:hover {
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 /* Top Bar Reset - Fixed but not floating */
@@ -34,16 +42,18 @@ body.lightweight-mode .liquid-top-bar {
     left: 0 !important;
     right: 0 !important;
     width: 100%;
-    height: 64px;
+    box-sizing: border-box; /* Ensure padding doesn't add to width */
+    height: auto;
+    min-height: 64px;
     margin: 0;
     border-radius: 0;
-    background: transparent !important; /* Purely transparent */
-    backdrop-filter: saturate(180%) blur(20px) !important; /* High-quality glass blur */
+    background: rgba(255, 255, 255, 0.8) !important; /* Slight background for readability */
+    backdrop-filter: saturate(180%) blur(20px) !important;
     -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08); /* Subtle definition line */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: none;
     transform: none !important;
-    padding: 0 10%;
+    padding: 10px 20px;
     z-index: 1000;
 }
 
@@ -55,12 +65,14 @@ body.lightweight-mode .liquid-top-bar:hover {
 body.lightweight-mode .content-wrapper {
     margin-left: 0 !important;
     padding: 0;
+    width: 100%;
 }
 
 body.lightweight-mode .container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 40px 20px;
+    box-sizing: border-box;
 }
 
 /* Disable Animations and Transitions */
@@ -112,6 +124,24 @@ body.lightweight-mode .design-option-btn:hover {
     border-color: rgba(0, 0, 0, 0.2) !important;
     opacity: 1;
     transform: none !important;
+    padding: 8px 16px !important;
+    border-radius: 10px !important;
+}
+
+/* Override search button liquid glass effects in lightweight mode */
+body.lightweight-mode .search-button:hover .liquidGlass-effect,
+body.lightweight-mode .search-button:hover .liquidGlass-tint,
+body.lightweight-mode .search-button:hover .liquidGlass-shine {
+    border-radius: 10px !important;
+    background: transparent !important;
+}
+
+body.lightweight-mode .search-button:hover .liquidGlass-tint {
+    background: transparent !important;
+}
+
+body.lightweight-mode .search-button:hover .liquidGlass-text {
+    color: #1d1d1f !important;
 }
 
 /* Search Bar Styling */
@@ -170,3 +200,28 @@ body.lightweight-mode .about-icon {
     border: 1px solid #d2d2d7 !important;
     color: #1d1d1f !important;
 }
+
+/* Text Truncation in Lightweight Mode */
+body.lightweight-mode .article-title-ja {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+}
+
+body.lightweight-mode .article-description-ja {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+}
+
+/* Email Verification Banner - Full Width in Lightweight Mode */
+body.lightweight-mode #email-verification-banner {
+    left: 20px !important;
+    right: 20px !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: none !important;
+}
+\n/* Text Truncation in Lightweight Mode */\nbody.lightweight-mode .article-title-ja {\n    display: -webkit-box !important;\n    -webkit-line-clamp: 2 !important;\n    -webkit-box-orient: vertical !important;\n    overflow: hidden !important;\n}\n\nbody.lightweight-mode .article-description-ja {\n    display: -webkit-box !important;\n    -webkit-line-clamp: 3 !important;\n    -webkit-box-orient: vertical !important;\n    overflow: hidden !important;\n}

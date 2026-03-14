@@ -1,130 +1,93 @@
-
 # Project Documentation (agents.md)
 
-このドキュメントは、本プロジェクトの技術的な概要、構造、そして将来の開発のための指針をまとめたものです。開発者やAIエージェントがシステムを迅速に理解し、一貫性を保ちながら新しい機能を実装することを目的としています。
+このドキュメントは、本プロジェクトの技術的な概要、構造、そして開発指針をまとめたものです。開発者やAIエージェントがシステムを迅速に理解し、一貫性を保ちながら新しい機能を実装することを目的としています。
 
 ## 1. プロジェクト概要
 
-このアプリケーションは、FlaskをベースとしたニュースリーダーWebアプリケーションです。NewsAPIから記事を取得し、DeepL APIで翻訳してユーザーに表示します。また、ユーザー認証、ユーザーによる投稿、プロフィール管理機能も備えています。
+このアプリケーションは、Web (Flask) と iOS (SwiftUI) の両方で動作するクロスプラットフォームニュースリーダーです。Firebaseをバックエンドとして採用し、デバイス間でシームレスな体験を提供します。
 
 ## 2. 技術スタック
 
-- **バックエンド**: Python 3, Flask
-- **フロントエンド**: HTML, CSS, Vanilla JavaScript
-- **データストア**: JSONファイル (`posts.json`, `users.json`)
+- **バックエンド**: Python 3, Flask, Firebase Admin SDK
+- **データベース**: Google Cloud Firestore (NoSQL)
+- **認証**: Firebase Authentication (Email/Password)
+- **フロントエンド (Web)**: HTML5, Vanilla JavaScript, CSS (Liquid Glass / Lightweight), Firebase JS SDK
+- **フロントエンド (iOS)**: SwiftUI, Firebase iOS SDK
 - **外部API**:
-  - [NewsAPI](https://newsapi.org/): ニュース記事の取得
+  - [NewsAPI](https://newsapi.org/), [GNews](https://gnews.io/), [NewsData.io](https://newsdata.io/): ニュース記事の取得
   - [DeepL API](https://www.deepl.com/docs-api/): 多言語翻訳
-- **主要なPythonライブラリ**:
-  - `Flask`: Webフレームワーク
-  - `requests`: 外部APIへのHTTPリクエスト
-  - `python-dotenv`: 環境変数の管理
-  - `Werkzeug`: パスワードのハッシュ化とファイルハンドリング
 
 ## 3. プロジェクト構造
 
 ```
 /
-├── firstpractice.py      # Flaskアプリケーション本体。APIエンドポイントと主要ロジック。
-├── newsapi.py            # NewsAPIと通信するためのモジュール。
-├── deepl.py              # DeepL APIと通信するためのモジュール。
-├── requirements.txt      # Pythonの依存ライブラリリスト。
-├── posts.json            # ユーザーの投稿データを保存するファイル。
-├── users.json            # ユーザー情報を保存するファイル。
-├── .env                  # (Git管理外) APIキーや秘密鍵を保存。
-├── agents.md             # このドキュメントファイル。
-│
-├── templates/
-│   └── testapp/
-│       └── index.html    # フロントエンドの全UIを記述した単一のHTMLファイル。
-│
-└── static/
-    ├── glassUI.css       # 「グラスモーフィズム」UIの主要なスタイルシート。
-    ├── logo.png          # アプリケーションのロゴ。
-    ├── uploads/          # ユーザーが投稿した画像を保存するディレクトリ。
-    └── avatars/          # ユーザーのプロフィールアイコンを保存するディレクトリ。
+├── app/
+│   ├── __init__.py      # Flaskアプリ初期化 & Firebase Admin SDK設定
+│   ├── routes/          # APIエンドポイント
+│   │   ├── main.py      # ニュース取得・検索・メインページ
+│   │   ├── auth.py      # 認証API (セッション管理連携)
+│   │   └── posts.py     # 投稿API (Firestore操作)
+│   ├── services/        # 外部APIラッパー (NewsAPI, DeepL, Aggregator)
+│   ├── static/          # CSS (glassUI.css, lightweightUI.css), JS, 画像
+│   └── templates/       # HTMLテンプレート (Firebase JS SDK初期化含む)
+├── News-Mobile/         # iOS SwiftUI プロジェクト
+│   ├── News-Mobile/     # ソースコード (Views, ViewModels)
+│   └── News-Mobile.xcodeproj/
+├── docs/                # ドキュメント
+├── .env                 # APIキー、Firebase認証情報パス
+└── requirements.txt     # Python依存ライブラリ
 ```
 
 ## 4. 主要なロジックとデータフロー
 
-### ニュース取得・翻訳フロー
+### ニュース取得・翻訳フロー (Server-Side)
 
-1.  **クライアント**: ユーザーが「ニュースを更新」ボタンを押すか検索を実行すると、JavaScriptの`fetch`がバックエンドAPI (`/api/update` or `/api/search`) を呼び出します。
-2.  **バックエンド (`firstpractice.py`)**:
-    a. エンドポイントは `get_translated_articles` 関数を呼び出します。
-    b. `get_translated_articles` は `newsapi.fetch_full_articles` を呼び出し、NewsAPIから記事リストを取得します。
-    c. `ThreadPoolExecutor` を使用し、`_translate_article` ヘルパー関数を各記事に対して**並列**で実行します。
-    d. `_translate_article` は `deepl.translate_to_ja` または `deepl.translate_to_en` を呼び出して翻訳を実行します。
-    e. 翻訳済みの記事リストが収集され、JSON形式でクライアントに応答として返されます。
-3.  **クライアント**: JavaScriptがJSONデータを受け取り、動的にHTMLを生成して記事をページに描画します。
+1.  **クライアント (Web/iOS)**: ニュース更新リクエスト (`/api/update`) を送信。
+2.  **バックエンド (Flask)**:
+    a. `aggregator.py` が複数のニュースAPI (NewsAPI, GNews等) から並列で記事を取得。
+    b. 重複排除ロジックを実行。
+    c. `deepl.py` を使用して記事のタイトル・詳細を翻訳 (JA <-> EN)。
+    d. 翻訳された記事リストをJSONとして返却。
+3.  **クライアント**: 受け取ったJSONを描画。Firestoreには保存せず、オンメモリまたは一時キャッシュとして扱います。
 
-### ユーザーデータ管理 (投稿・認証) フロー
+### ユーザーデータ管理 (Firestore & Auth)
 
-1.  **クライアント**: ユーザーがフォーム（ログイン、新規登録、投稿作成など）を操作します。
-2.  **バックエンド (`firstpractice.py`)**:
-    a. 対応するAPIエンドポイント (`/api/auth/login`, `/api/posts`など) が呼び出されます。
-    b. `load_users()` や `load_posts()` のようなヘルパー関数が呼ばれ、JSONファイル全体をメモリに読み込みます。
-    c. データが処理されます（例: 新規ユーザーの追加、パスワードの検証）。
-    d. `save_users()` や `save_posts()` が呼ばれ、更新されたデータ構造全体がJSONファイルに書き戻されます。
-    e. 処理結果がJSON形式でクライアントに返されます。
+1.  **認証**:
+    -   **Web**: Firebase JS SDK (`signInWithEmailAndPassword`) で認証し、IDトークンを取得。トークンをバックエンドに送信し、セッション検証を行う。
+    -   **iOS**: Firebase iOS SDK で直接認証。
+2.  **投稿データ (Posts)**:
+    -   データは **Firestore** の `posts` コレクションに保存されます。
+    -   **Web**: フロントエンドからAPI経由、または直接Firestore SDKを用いて読み書き。
+    -   **iOS**: Firestore SDK (`addDocument`, `getDocuments`) を用いて直接読み書き。
+    -   画像データはBase64エンコードしてFirestoreに保存（小規模な場合）またはStorage参照として保存。
 
-## 5. 今後の機能実装のポイント
+## 5. UI/UX デザイン方針
 
-### ポイント1: データ永続化 - データベースへの移行
+-   **Web版**:
+    -   **Default**: 「Liquid Glass」デザイン。高負荷なブラー効果とアニメーションを使用。
+    -   **Lightweight**: 「Clean Glass」モード。パフォーマンスを重視し、アニメーションを排除したシンプルなデザイン。ユーザー設定で切り替え可能。
+-   **iOS版**:
+    -   **Native Liquid Glass**: iOS標準の `UltraThinMaterial` を活用し、OSに馴染むグラスモーフィズムを実現。
 
-現在のJSONファイルによるデータ管理は、パフォーマンスのボトルネックであり、複数ユーザーの同時操作に対する安全性（競合状態）が確保されていません。
+## 6. 今後の開発指針
 
--   **強く推奨**: データベースへの移行。手始めとして **SQLite** がシンプルで最適です。
--   **実装方法**:
-    1.  `Flask-SQLAlchemy` を `requirements.txt` に追加します。
-    2.  `firstpractice.py` でSQLAlchemyの初期設定を行います。
-    3.  `User` と `Post` のモデルクラスを定義します (例: `class User(db.Model): ...`)。
-    4.  `load_users()`, `save_users()` 等のファイル操作を、すべてSQLAlchemyのクエリに置き換えます (例: `User.query.filter_by(email=email).first()`, `db.session.add(new_post)`, `db.session.commit()`)。
+-   **新機能の追加**: 常にWebとiOSの両方での利用を想定して設計すること。
+-   **データ整合性**: Firestoreのセキュリティルールを適切に設定し、クライアントからの不正な書き込みを防ぐ。
+-   **パフォーマンス**: ニュース取得APIのレスポンス時間を短縮するため、キャッシュ戦略（Redis等）の導入を検討する。
 
-### ポイント2: バックエンド機能・エンドポイントの追加
+### 日記 (History)
 
-1.  **ルート定義**: `firstpractice.py` に新しい `@app.route(...)` デコレータを追加します。
-2.  **ビュー関数作成**: リクエストを処理する関数を実装します。
-3.  **ロジックの分離**: 新しい外部APIと連携する場合、`newsapi.py` のように専用のモジュールを作成することを検討します。
-4.  **データアクセス**: データベース移行後は、データ操作には必ずSQLAlchemyのモデルとセッションを使用します。直接のファイルI/Oは避けてください。
-5.  **応答形式**: フロントエンド向けのAPIは `jsonify()` を使ってJSONを返します。
+- **Day 1**: iOSプロジェクト作成。Firebaseセットアップ完了。Web/iOS間の認証共通化に成功。
+- **Day 2**: iOSアプリのUI改善（Native Liquid Glass）。Web版の軽量UIモード実装。DeepL翻訳修正。
+- **Day 3**: Firebase Auth セキュリティフロー（メール認証・パスワード再設定・再認証・アカウント削除・メールアドレス変更）実装。iOS テーマ切替（ライト/ダーク/システム）・言語切替（JA/EN）・Liquid Glass FAB・キーボード自動dismiss完成。DeepL障害時のフォールバック機構実装。
 
-### ポイント3: フロントエンドの修正
+### 既知の技術的課題 (Known Issues)
 
--   **対象ファイル**: フロントエンドのロジックはすべて `templates/testapp/index.html` 内の `<script>` タグに記述されています。
--   **データ取得**: `fetch` APIを使用してバックエンドのエンドポイントを呼び出します。既存の `loadAllContent()` や `performSearch()` が良い参考になります。
--   **DOM操作**: 受け取ったデータをもとに、動的にHTML要素を生成・更新します。`renderArticle()` や `renderUserPost()` が参考になります。
--   **スタイリング**: UIの一貫性を保つため、`glassUI.css` で定義されている既存のクラス (`liquidGlass-wrapper`, `glass-button`など) を再利用してください。
+~~すべて解消済み。~~
 
-### ポイント4: 長時間タスクの扱い
+### Next Steps
 
-現在は `ThreadPoolExecutor` で翻訳処理を並列化していますが、今後さらに時間のかかるタスク（例: 動画処理、大規模なレポート生成）を追加する場合は、より堅牢なソリューションを検討すべきです。
-
--   **推奨**: **Celery** と **Redis** (またはRabbitMQ) のような専門のタスクキューを導入します。
--   **導入タイミング**: ユーザーがHTTPの応答を待てないほど長い（数秒以上かかる）タスクを実装する時。
--   **想定フロー**: APIエンドポイントはCeleryタスクを起動して即座に`task_id`を返し、フロントエンドはタスクが完了するまでステータス確認用の別エンドポイントを定期的にポーリングします。
-
-### ポイント5: 環境変数の管理
-
--   **ルール**: Flaskの`SECRET_KEY`や外部APIキーなどの機密情報は、すべて `.env` ファイルに記述します。
--   **アクセス方法**: コード中では `os.getenv()` を介してのみアクセスします。
--   **推奨**: 必要な環境変数をリストアップした `.env.example` ファイルを作成し、Gitで管理することで、他の開発者が設定すべき項目を容易に把握できるようにします。
-### 日記(必ず読んで)
-- 
-day1:   今、Webで動作をしているニュースアプリをXcodeProjectを作成して、iOSとWebどちらでもつかえるようにしたい。
-        APIをつかってニュースを取得する機能と、自分で投稿することができる機能の2つがあり、APIはSwiftとWebはそれぞれ独立して叩くので、分離したい
-        だけど、タイムラインの中に各個人が投稿した内容とAPIで取得したニュースが混在する仕様なので、個人が投稿したものは、Firebaseに保存され、WebでもiOSでも、同じ内容が表示されるようにしたい。
-        API経由の内容はDBに保存する必要がないが、個人の投稿はDBに保存され適切にどちらの端末でも情報を確認できる / 投稿することができるようにしたい。
-        
-        現在のWebにはログイン機能がなく、実装は検討していたがローカルホスト上でのみ動作するものだったので、FirebaseAuthをつかってログインや登録ができ、iOSで
-        登録をしても、Webで同じアカウントにログインすることができ、Webで登録をしてもiOSで同じアカウントにログインできるようにしたい。
-    to do next
-        ・firebaseセットアップ
-        ・iOSアプリを簡易的に実装
-        ・アカウントをE-mailによって作成可能に
-day2   上記のことは大体できたので、次はUIを細かく改善
-       iOSでもWeb版と同等の機能をついかしておきたい。(カラーテーマなど)
-    to do next
-        ・deeplAPIが記事を翻訳できていないので修正する。
-        ・アカウントのパスワード変更・アカウント消去の際のメールアドレス認証機　　　能(firebaseがあるので実装可能)
-        ・AIによる記事の自動レビュー、コメント機能
+-   上記 Known Issues の解消
+-   プッシュ通知の実装（FCM）
+-   ユーザー間のコメント・インタラクション機能
+-   Firestoreページネーション対応

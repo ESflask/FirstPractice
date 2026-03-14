@@ -27,23 +27,24 @@ FlaskベースのWebアプリケーションと相互連携するネイティブ
 ## 4. 機能実装フェーズ
 
 ### フェーズ 1: ニュース取得の実装
-- [ ] News API の iOS 用キー設定。
-- [ ] `NewsService` の作成（URLSession による直接取得）。
-- [ ] ニュース一覧表示（Web版に近いレイアウト）。
+- [x] News API の iOS 用キー設定（Flask経由で取得）。
+- [x] `NewsService` の作成（URLSession による Flask `/api/update` への取得）。
+- [x] ニュース一覧表示（Unified Feed レイアウト）。
 
 ### フェーズ 2: 認証とプロフィール
-- [ ] Firebase Auth によるログイン・新規登録。
-- [ ] プロフィール表示（Firestore から取得）。
-- [ ] ※アバター画像はWeb版がローカル保存のため、iOSからはURL表示のみ、またはBase64での更新を検討。
+- [x] Firebase Auth によるログイン・新規登録。
+- [x] プロフィール表示・セキュリティ設定（`SettingsView`）。
+- [x] メール認証・パスワード再設定・再認証・アカウント削除・メールアドレス変更の実装。
+- [ ] アバター画像の更新（iOS からの Base64 アップロードは未実装）。
 
 ### フェーズ 3: Firestore 連携（投稿表示・作成）
-- [ ] Firestore `posts` コレクションの購読。
-- [ ] 投稿作成：画像を **Base64 文字列** に変換し、Firestore の `image_data` フィールド等に保存。
-- [ ] Web側での表示対応（Base64デコード表示）。
+- [x] Firestore `posts` コレクションのリアルタイム取得（`PostViewModel`）。
+- [x] 投稿作成：画像を **Base64 文字列** に変換し、Firestore の `image_base64` フィールドに保存（800px リサイズ + JPEG 圧縮）。
+- [ ] Web側での Base64 デコード表示（未確認）。
 
 ### フェーズ 4: 相互連携の最適化
-- [ ] iOSで投稿した内容がWebのFirestore経由で即時反映されることを確認。
-- [ ] Webで投稿された画像（ローカルパス）をiOSで表示するための Flask URL 変換処理。
+- [x] iOSで投稿した内容がWebのFirestore経由で即時反映されることを確認。
+- [x] Webで投稿された画像（ローカルパス）をiOSで表示するための Flask URL 変換処理（ただしIPハードコードの課題あり → Known Issues 参照）。
 
 ## 5. データモデルの変更点
 
@@ -67,7 +68,14 @@ struct Post: Codable, Identifiable {
 - **データ制限**: Firestore のドキュメントサイズ上限（1MB）に注意し、iOSからの画像アップロード時はリサイズと圧縮を必須とします。
 
 ## 7. マイルストーン
-1. **Week 1**: News API 直接取得と基本的なデザイン実装。
-2. **Week 2**: Firebase Auth と Firestore 連携（閲覧のみ）。
-3. **Week 3**: iOSからの投稿機能（Base64画像保存）の実装。
-4. **Week 4**: Web/iOS 間の画像表示互換性の調整。
+1. **Week 1** ✅: News API 直接取得と基本的なデザイン実装。
+2. **Week 2** ✅: Firebase Auth と Firestore 連携（閲覧のみ）。
+3. **Week 3** ✅: iOSからの投稿機能（Base64画像保存）の実装。
+4. **Week 4** ✅: Web/iOS 間の画像表示互換性の調整。Auth セキュリティフロー・テーマ/言語切替の完成。
+
+## 8. 既知の技術的課題 (Known Issues)
+
+- **IPハードコード**: `NewsService.swift`・`ContentView.swift`（2箇所）に `http://172.20.10.2:5001` が直書き。`AppConfig.swift` への一元管理が必要。
+- **MainActor上でのBase64デコード**: `PostViewModel.fetchPosts()` がメインスレッドで全件デコードを実行しており、投稿数増加時にUIがブロックされる恐れがある。`Task.detached` への移行推奨。
+- **`FeedItem.id` の不安定性**: `post.id` が nil の場合に `UUID().uuidString` を毎回生成するため、SwiftUIの差分更新が正しく動作しない可能性。
+- **`HomeView` ツールバーのログアウトボタン**: アクションが空のプレースホルダーのまま（`authViewModel.signOut()` の呼び出しが必要）。

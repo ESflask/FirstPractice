@@ -1,973 +1,1854 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <title>Apple News Reader</title>
+        <!-- Import new Glass UI CSS with cache busting -->
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='glassUI.css') }}?v=1.4"
+        />
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='lightweightUI.css') }}?v=1.0"
+        />
+        <!-- Inline minimal fallback/overrides just in case -->
+        <style>
+            @import url("https://rsms.me/inter/inter.css");
+            body {
+                font-family:
+                    "Inter",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    sans-serif;
+            }
+            /* Make article cards clickable */
+            .article-card {
+                cursor: pointer !important;
+            }
+            /* Critical interactive elements */
+            .glass-button,
+            .lang-option,
+            .sidebar-icon,
+            .user-avatar,
+            .modal-close,
+            .btn-primary,
+            .btn-secondary,
+            .search-input,
+            .about-icon,
+            .menu-item,
+            .article-link {
+                pointer-events: auto !important;
+                cursor: pointer !important;
+                position: relative;
+                z-index: 100 !important;
+            }
+            .action-area,
+            .search-area,
+            .logo-area,
+            .lang-toggle {
+                position: relative;
+                z-index: 50 !important;
+                pointer-events: auto !important;
+            }
+            .modal-overlay {
+                z-index: 9999 !important;
+            }
+            .modal-content {
+                z-index: 10000 !important;
+            }
 
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Apple News Reader</title>
-    <!-- Import new Glass UI CSS with cache busting -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='glassUI.css') }}?v=1.3">
-    <link rel="stylesheet" href="{{ url_for('static', filename='lightweightUI.css') }}?v=1.0">
-    <!-- Inline minimal fallback/overrides just in case -->
-    <style>
-        @import url('https://rsms.me/inter/inter.css');
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        /* Make article cards clickable */
-        .article-card { cursor: pointer !important; }
-        /* Critical interactive elements */
-        .glass-button, .lang-option, .sidebar-icon, .user-avatar, .modal-close, .btn-primary, .btn-secondary {
-            pointer-events: auto !important;
-            cursor: pointer !important;
-            position: relative;
-            z-index: 100 !important;
-        }
-        .action-area, .search-area, .logo-area, .lang-toggle {
-            position: relative; z-index: 50 !important; pointer-events: auto !important;
-        }
-        .modal-overlay { z-index: 9999 !important; }
-        .modal-content { z-index: 10000 !important; }
+            /* Settings and Action Area Styles */
+            .lang-option-btn,
+            .design-option-btn {
+                flex: 1;
+                padding: 10px;
+                border-radius: 12px;
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                cursor: pointer;
+                transition: all 0.2s;
+                position: relative;
+                overflow: hidden;
+            }
+            .lang-option-btn.active,
+            .design-option-btn.active {
+                background: rgba(0, 113, 227, 0.4);
+                box-shadow: 0 0 15px rgba(0, 113, 227, 0.3);
+            }
+            .about-icon:hover {
+                opacity: 1 !important;
+                background: rgba(255, 255, 255, 0.2) !important;
+            }
+        </style>
 
-        /* Settings and Action Area Styles */
-        .lang-option-btn, .design-option-btn {
-            flex: 1;
-            padding: 10px;
-            border-radius: 12px;
-            border: none;
-            background: rgba(255,255,255,0.1);
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-        .lang-option-btn.active, .design-option-btn.active {
-            background: rgba(0, 113, 227, 0.4);
-            box-shadow: 0 0 15px rgba(0, 113, 227, 0.3);
-        }
-        .about-icon:hover {
-            opacity: 1 !important;
-            background: rgba(255,255,255,0.2) !important;
-        }
-    </style>
+        <!-- SVG Filter for Liquid Glass Distortion -->
+        <svg style="position: absolute; width: 0; height: 0">
+            <defs>
+                <filter id="glass-distortion">
+                    <feTurbulence
+                        type="fractalNoise"
+                        baseFrequency="0.015"
+                        numOctaves="3"
+                        result="noise"
+                    />
+                    <feDisplacementMap
+                        in="SourceGraphic"
+                        in2="noise"
+                        scale="8"
+                        xChannelSelector="R"
+                        yChannelSelector="G"
+                    />
+                </filter>
+            </defs>
+        </svg>
+    </head>
 
-    <!-- SVG Filter for Liquid Glass Distortion -->
-    <svg style="position: absolute; width: 0; height: 0;">
-        <defs>
-            <filter id="glass-distortion">
-                <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" result="noise" />
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-        </defs>
-    </svg>
-</head>
-
-<body>
-
-    <!-- SIDEBAR -->
-    <nav class="sidebar liquidGlass-wrapper">
-        <div class="liquidGlass-effect"></div>
-        <div class="liquidGlass-tint"></div>
-        <div class="liquidGlass-shine"></div>
-        <div class="liquidGlass-text" style="display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; padding: 20px 0; position: relative; z-index: 3;">
-            <div style="height: 20px;"></div>
-            <a href="#" class="sidebar-icon" title="ホーム" onclick="event.preventDefault(); navigateHome();"><span class="sidebar-icon-symbol">⌂</span><span class="sidebar-icon-text" id="sidebar-home">ホーム</span></a>
-            <a href="#" class="sidebar-icon" title="お気に入り" onclick="event.preventDefault(); navigateFavorites();"><span class="sidebar-icon-symbol">☆</span><span class="sidebar-icon-text" id="sidebar-favorites">お気に入り</span></a>
-            <a href="#" class="sidebar-icon" title="設定" onclick="event.preventDefault(); navigateSettings();"><span class="sidebar-icon-symbol">⚙</span><span class="sidebar-icon-text" id="sidebar-settings">設定</span></a>
-            <div class="sidebar-spacer"></div>
-            <div class="sidebar-user" id="sidebarUser">
-                <div class="user-avatar" id="userAvatar" onclick="event.stopPropagation(); toggleUserMenu();">●</div>
-                <div class="user-menu liquidGlass-wrapper" id="userMenu">
-                    <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                    <div class="liquidGlass-text" style="display: flex; flex-direction: column;">
-                        <div id="menu-logged-in" style="display: none;">
-                            <a href="#" class="menu-item" id="menu-profile" onclick="event.preventDefault(); openProfileModal();">Profile Settings</a>
-                            <a href="#" class="menu-item" id="menu-prefs">Preferences</a>
-                            <div style="height: 1px; background: rgba(0,0,0,0.1); margin: 4px 0;"></div>
-                            <a href="#" class="menu-item" style="color: #ff3b30;" id="menu-logout" onclick="event.preventDefault(); handleLogout();">Log Out</a>
-                        </div>
-                        <div id="menu-logged-out">
-                            <a href="#" class="menu-item" id="menu-login" onclick="event.preventDefault(); openAuthModal('login');">Login</a>
-                            <a href="#" class="menu-item" id="menu-register" onclick="event.preventDefault(); openAuthModal('register');">Register</a>
+    <body>
+        <!-- SIDEBAR -->
+        <nav class="sidebar liquidGlass-wrapper">
+            <div class="liquidGlass-effect"></div>
+            <div class="liquidGlass-tint"></div>
+            <div class="liquidGlass-shine"></div>
+            <div
+                class="liquidGlass-text"
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    width: 100%;
+                    height: 100%;
+                    padding: 20px 0;
+                    position: relative;
+                    z-index: 3;
+                "
+            >
+                <div style="height: 20px"></div>
+                <a
+                    href="#"
+                    class="sidebar-icon"
+                    title="ホーム"
+                    onclick="event.preventDefault(); navigateHome();"
+                    ><span class="sidebar-icon-symbol">⌂</span
+                    ><span class="sidebar-icon-text" id="sidebar-home"
+                        >ホーム</span
+                    ></a
+                >
+                <a
+                    href="#"
+                    class="sidebar-icon"
+                    title="お気に入り"
+                    onclick="event.preventDefault(); navigateFavorites();"
+                    ><span class="sidebar-icon-symbol">☆</span
+                    ><span class="sidebar-icon-text" id="sidebar-favorites"
+                        >お気に入り</span
+                    ></a
+                >
+                <a
+                    href="#"
+                    class="sidebar-icon"
+                    title="設定"
+                    onclick="event.preventDefault(); navigateSettings();"
+                    ><span class="sidebar-icon-symbol">⚙</span
+                    ><span class="sidebar-icon-text" id="sidebar-settings"
+                        >設定</span
+                    ></a
+                >
+                <div class="sidebar-spacer"></div>
+                <div class="sidebar-user" id="sidebarUser">
+                    <div
+                        class="user-avatar"
+                        id="userAvatar"
+                        onclick="event.stopPropagation(); toggleUserMenu();"
+                    >
+                        ●
+                    </div>
+                    <div class="user-menu liquidGlass-wrapper" id="userMenu">
+                        <div class="liquidGlass-effect"></div>
+                        <div class="liquidGlass-tint"></div>
+                        <div class="liquidGlass-shine"></div>
+                        <div
+                            class="liquidGlass-text"
+                            style="display: flex; flex-direction: column"
+                        >
+                            <div id="menu-logged-in" style="display: none">
+                                <a
+                                    href="#"
+                                    class="menu-item"
+                                    id="menu-profile"
+                                    onclick="event.preventDefault(); openProfileModal();"
+                                    >Profile Settings</a
+                                >
+                                <a href="#" class="menu-item" id="menu-prefs"
+                                    >Preferences</a
+                                >
+                                <div
+                                    style="
+                                        height: 1px;
+                                        background: rgba(0, 0, 0, 0.1);
+                                        margin: 4px 0;
+                                    "
+                                ></div>
+                                <a
+                                    href="#"
+                                    class="menu-item"
+                                    style="color: #ff3b30"
+                                    id="menu-logout"
+                                    onclick="event.preventDefault(); handleLogout();"
+                                    >Log Out</a
+                                >
+                            </div>
+                            <div id="menu-logged-out">
+                                <a
+                                    href="#"
+                                    class="menu-item"
+                                    id="menu-login"
+                                    onclick="event.preventDefault(); openAuthModal('login');"
+                                    >Login</a
+                                >
+                                <a
+                                    href="#"
+                                    class="menu-item"
+                                    id="menu-register"
+                                    onclick="event.preventDefault(); openAuthModal('register');"
+                                    >Register</a
+                                >
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </nav>
+        </nav>
 
-    <!-- CONTENT WRAPPER -->
-    <div class="content-wrapper">
-        <!-- TOP BAR -->
-        <header class="liquid-top-bar liquidGlass-wrapper">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div class="logo-area liquidGlass-text" style="display: flex; align-items: center; gap: 16px;">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="News App Logo" style="height: 48px;">
-                <a href="{{ url_for('main.about') }}" class="about-icon" title="About NewsApp">ⓘ</a>
-            </div>
-            <div class="search-area liquidGlass-text" style="flex: 1; max-width: 600px; margin: 0 20px;">
-                <div class="search-wrapper">
-                    <input type="text" id="search-input" class="search-input" placeholder="記事を検索..." />
-                    <button id="clear-search" class="clear-search-btn" style="display: none;">✕</button>
-                    <button id="search-button" class="search-button liquidGlass-wrapper">
-                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                        <span class="liquidGlass-text" id="search-btn-text">検索</span>
-                    </button>
+        <!-- CONTENT WRAPPER -->
+        <div class="content-wrapper">
+            <!-- TOP BAR -->
+            <header class="liquid-top-bar liquidGlass-wrapper">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div
+                    class="logo-area liquidGlass-text"
+                    style="display: flex; align-items: center; gap: 16px"
+                >
+                    <img
+                        src="{{ url_for('static', filename='logo.png') }}"
+                        alt="News App Logo"
+                        style="height: 48px"
+                    />
+                    <a
+                        href="{{ url_for('main.about') }}"
+                        class="about-icon"
+                        title="About NewsApp"
+                        >ⓘ</a
+                    >
                 </div>
-            </div>
-            <div class="action-area" style="display: flex; align-items: center; gap: 12px;">
-                <div id="auth-buttons" style="display: flex; gap: 8px;">
-                    <!-- Guest Buttons -->
-                    <div id="guest-buttons" style="display: flex; gap: 8px;">
-                        <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('login')" id="top-login-btn">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">ログイン</span>
+                <div
+                    class="search-area liquidGlass-text"
+                    style="flex: 1; max-width: 600px; margin: 0 20px"
+                >
+                    <div class="search-wrapper">
+                        <input
+                            type="text"
+                            id="search-input"
+                            class="search-input"
+                            placeholder="記事を検索..."
+                        />
+                        <button
+                            id="clear-search"
+                            class="clear-search-btn"
+                            style="display: none"
+                        >
+                            ✕
                         </button>
-                        <button class="glass-button liquidGlass-wrapper" onclick="openAuthModal('register')" id="top-register-btn" style="background: rgba(255,255,255,0.2);">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">新規登録</span>
+                        <button
+                            id="search-button"
+                            class="search-button liquidGlass-wrapper"
+                        >
+                            <div class="liquidGlass-effect"></div>
+                            <div class="liquidGlass-tint"></div>
+                            <div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text" id="search-btn-text"
+                                >検索</span
+                            >
                         </button>
                     </div>
-                    <!-- Logged In Buttons -->
-                    <button class="glass-button liquidGlass-wrapper" onclick="handleLogout()" id="top-logout-btn" style="display: none; background: rgba(255, 59, 48, 0.2);">
-                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                        <span class="liquidGlass-text" style="color: #ff3b30;">ログアウト</span>
-                    </button>
                 </div>
-                <button class="glass-button liquidGlass-wrapper" onclick="openSettingsModal()" id="top-settings-btn" title="Settings">
-                    <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                    <span class="liquidGlass-text">⚙</span>
-                </button>
-                <button class="glass-button liquidGlass-wrapper" onclick="openCreatePostModal()">
-                    <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                    <span class="liquidGlass-text" id="create-post-text">➕ 投稿を作成</span>
-                </button>
-                <button id="api-update-btn" class="glass-button liquidGlass-wrapper">
-                    <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                    <span class="liquidGlass-text" id="update-btn-text">ニュースを更新</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- EMAIL VERIFICATION BANNER -->
-        <div id="email-verification-banner" class="liquidGlass-wrapper" style="display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 90%; max-width: 800px; padding: 12px 20px; border-radius: 12px; background: rgba(255, 59, 48, 0.15); border: 1px solid rgba(255, 59, 48, 0.3);">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div class="liquidGlass-text" style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.2rem;">⚠️</span>
-                    <span id="verification-text" style="font-size: 0.9rem; font-weight: 500;">メールアドレスが未認証です。機能が制限される場合があります。</span>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="glass-button liquidGlass-wrapper" onclick="resendVerificationEmail()" style="padding: 6px 15px; font-size: 0.8rem; background: rgba(255,255,255,0.2);">
-                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                        <span class="liquidGlass-text">認証メールを送信</span>
-                    </button>
-                    <button class="glass-button liquidGlass-wrapper" onclick="location.reload()" style="padding: 6px 15px; font-size: 0.8rem; background: rgba(255,255,255,0.1);">
-                        <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                        <span class="liquidGlass-text">更新</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MAIN CONTENT -->
-        <div class="container" id="articles-container" style="margin-top: 100px;">
-            <!-- Welcome Banner for Guest -->
-            <div id="guest-welcome-banner" class="liquidGlass-wrapper" style="margin-bottom: 30px; padding: 40px; text-align: center; border-radius: 20px; display: none;">
-                <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                <div class="liquidGlass-text" style="position: relative; z-index: 3;">
-                    <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Welcome to Apple News Reader</h1>
-                    <p style="font-size: 1.2rem; margin-bottom: 25px; opacity: 0.8;">世界中のニュースを日本語で。アカウントを作って、あなたの投稿をシェアしましょう。</p>
-                    <div style="display: flex; justify-content: center; gap: 15px;">
-                        <button class="btn-primary" onclick="openAuthModal('register')" style="padding: 12px 30px; font-size: 1.1rem;">今すぐ新規登録</button>
-                        <button class="btn-secondary" onclick="openAuthModal('login')" style="padding: 12px 30px; font-size: 1.1rem;">ログイン</button>
-                    </div>
-                </div>
-            </div>
-            <!-- Articles will be rendered here by JavaScript -->
-        </div>
-    </div>
-
-    <!-- MODALS -->
-    <!-- CREATE POST MODAL -->
-    <div class="modal-overlay" id="createPostModal">
-        <div class="modal-content liquidGlass-wrapper">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div style="position: relative; z-index: 3;">
-                <div class="modal-header"><h2 class="modal-title" id="modal-title">投稿を作成</h2><button class="modal-close" onclick="closeCreatePostModal()">✕</button></div>
-                <form id="createPostForm" class="modal-form" enctype="multipart/form-data">
-                    <div class="form-group"><label class="form-label" id="label-title">タイトル</label><input type="text" class="form-input" id="post-title" name="title" required placeholder="タイトルを入力..."></div>
-                    <div class="form-group"><label class="form-label" id="label-description">説明</label><textarea class="form-textarea" id="post-description" name="description" placeholder="説明を入力..."></textarea></div>
-                    <div class="form-group">
-                        <label class="form-label" id="label-image">画像</label>
-                        <div class="file-upload-wrapper">
-                            <label for="post-image" class="file-upload-label"><span>📁</span><span class="file-upload-text" id="upload-text">画像をアップロード</span></label>
-                            <input type="file" class="file-upload-input" id="post-image" name="image" accept="image/*" onchange="previewImage(event)">
-                            <img id="image-preview" class="file-preview" style="display: none;">
+                <div
+                    class="action-area"
+                    style="display: flex; align-items: center; gap: 12px"
+                >
+                    <div id="auth-buttons" style="display: flex; gap: 8px">
+                        <!-- Guest Buttons -->
+                        <div id="guest-buttons" style="display: flex; gap: 8px">
+                            <button
+                                class="glass-button liquidGlass-wrapper"
+                                onclick="openAuthModal('login')"
+                                id="top-login-btn"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text">ログイン</span>
+                            </button>
+                            <button
+                                class="glass-button liquidGlass-wrapper"
+                                onclick="openAuthModal('register')"
+                                id="top-register-btn"
+                                style="background: rgba(255, 255, 255, 0.2)"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text">新規登録</span>
+                            </button>
                         </div>
-                    </div>
-                    <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeCreatePostModal()" id="cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="submit-btn">投稿する</button></div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- AUTHENTICATION MODAL -->
-    <div class="modal-overlay" id="authModal">
-        <div class="modal-content liquidGlass-wrapper">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div style="position: relative; z-index: 3;">
-                <div class="modal-header"><h2 class="modal-title" id="auth-modal-title">ログイン</h2><button class="modal-close" onclick="closeAuthModal()">✕</button></div>
-                <div class="auth-tabs">
-                    <button class="auth-tab active" id="login-tab" onclick="switchAuthTab('login')"><span id="login-tab-text">ログイン</span></button>
-                    <button class="auth-tab" id="register-tab" onclick="switchAuthTab('register')"><span id="register-tab-text">新規登録</span></button>
-                </div>
-                <!-- LOGIN FORM -->
-                <form id="loginForm" class="modal-form auth-form" style="display: flex; flex-direction: column;">
-                    <div class="form-group"><label class="form-label" id="login-label-email">メールアドレス</label><input type="email" class="form-input" id="login-email" name="email" required placeholder="email@example.com"></div>
-                    <div class="form-group"><label class="form-label" id="login-label-password">パスワード</label><input type="password" class="form-input" id="login-password" name="password" required placeholder="パスワード"></div>
-                    <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeAuthModal()" id="login-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="login-submit-btn">ログイン</button></div>
-                </form>
-                <!-- REGISTER FORM -->
-                <form id="registerForm" class="modal-form auth-form" style="display: none; flex-direction: column;">
-                    <div class="form-group"><label class="form-label" id="register-label-email">メールアドレス</label><input type="email" class="form-input" id="register-email" name="email" required placeholder="email@example.com"></div>
-                    <div class="form-group"><label class="form-label" id="register-label-password">パスワード</label><input type="password" class="form-input" id="register-password" name="password" required placeholder="パスワード"></div>
-                    <div class="form-group"><label class="form-label" id="register-label-confirm">パスワード確認</label><input type="password" class="form-input" id="register-confirm" name="confirm" required placeholder="パスワードを再入力"></div>
-                    <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeAuthModal()" id="register-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="register-submit-btn">新規登録</button></div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- PROFILE SETTINGS MODAL -->
-    <div class="modal-overlay" id="profileModal">
-        <div class="modal-content liquidGlass-wrapper">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div style="position: relative; z-index: 3;">
-                <div class="modal-header"><h2 class="modal-title" id="profile-modal-title">プロフィール設定</h2><button class="modal-close" onclick="closeProfileModal()">✕</button></div>
-                <form id="profileForm" class="modal-form" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label class="form-label" id="profile-label-icon">プロフィールアイコン</label>
-                        <div class="profile-icon-wrapper">
-                            <img id="profile-icon-preview" class="profile-icon-large" src="" alt="Profile Icon" style="display: none;"><div id="profile-icon-placeholder" class="profile-icon-large">●</div>
-                            <label for="profile-icon-input" class="icon-upload-label"><span>📷 変更</span></label>
-                            <input type="file" id="profile-icon-input" name="icon" accept="image/*" style="display: none;" onchange="previewProfileIcon(event)">
-                        </div>
-                    </div>
-                    <div class="form-group"><label class="form-label" id="profile-label-email">メールアドレス</label><input type="email" class="form-input" id="profile-email" name="email" placeholder="email@example.com"></div>
-                    
-                    <div class="form-section">
-                        <h3 class="form-section-title">メールアドレス変更</h3>
-                        <p style="font-size: 0.8rem; margin-bottom: 10px; opacity: 0.7;">新しいメールアドレスを入力し、現在のパスワードで認証してください。</p>
-                        <div class="form-group"><input type="email" class="form-input" id="new-email-input" placeholder="新しいメールアドレス"></div>
-                        <div class="form-group"><input type="password" class="form-input" id="email-change-password" placeholder="現在のパスワード"></div>
-                        <button type="button" class="glass-button liquidGlass-wrapper" onclick="handleEmailChange()" style="width: 100%; padding: 10px;">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">メールアドレスを変更</span>
+                        <!-- Logged In Buttons -->
+                        <button
+                            class="glass-button liquidGlass-wrapper"
+                            onclick="handleLogout()"
+                            id="top-logout-btn"
+                            style="
+                                display: none;
+                                background: rgba(255, 59, 48, 0.2);
+                            "
+                        >
+                            <div class="liquidGlass-effect"></div>
+                            <div class="liquidGlass-tint"></div>
+                            <div class="liquidGlass-shine"></div>
+                            <span
+                                class="liquidGlass-text"
+                                style="color: #ff3b30"
+                                >ログアウト</span
+                            >
                         </button>
                     </div>
+                    <button
+                        class="glass-button liquidGlass-wrapper"
+                        onclick="openSettingsModal()"
+                        id="top-settings-btn"
+                        title="Settings"
+                    >
+                        <div class="liquidGlass-effect"></div>
+                        <div class="liquidGlass-tint"></div>
+                        <div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text">⚙</span>
+                    </button>
+                    <button
+                        class="glass-button liquidGlass-wrapper"
+                        onclick="openCreatePostModal()"
+                    >
+                        <div class="liquidGlass-effect"></div>
+                        <div class="liquidGlass-tint"></div>
+                        <div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text" id="create-post-text"
+                            >➕ 投稿を作成</span
+                        >
+                    </button>
+                    <button
+                        id="api-update-btn"
+                        class="glass-button liquidGlass-wrapper"
+                    >
+                        <div class="liquidGlass-effect"></div>
+                        <div class="liquidGlass-tint"></div>
+                        <div class="liquidGlass-shine"></div>
+                        <span class="liquidGlass-text" id="update-btn-text"
+                            >ニュースを更新</span
+                        >
+                    </button>
+                </div>
+            </header>
 
-                    <div class="form-section">
-                        <h3 class="form-section-title" id="profile-password-title">セキュリティ</h3>
-                        <p style="font-size: 0.9rem; margin-bottom: 15px; opacity: 0.8; color: var(--text-color, #fff);">
-                            パスワードを変更するには、登録済みのメールアドレスに再設定用リンクを送信します。
+            <!-- EMAIL VERIFICATION BANNER -->
+            <div
+                id="email-verification-banner"
+                class="liquidGlass-wrapper"
+                style="
+                    display: none;
+                    position: fixed;
+                    top: 80px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 1000;
+                    width: 90%;
+                    max-width: 800px;
+                    padding: 12px 20px;
+                    border-radius: 12px;
+                    background: rgba(255, 59, 48, 0.15);
+                    border: 1px solid rgba(255, 59, 48, 0.3);
+                "
+            >
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div
+                    class="liquidGlass-text"
+                    style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 15px;
+                    "
+                >
+                    <div style="display: flex; align-items: center; gap: 10px">
+                        <span style="font-size: 1.2rem">⚠️</span>
+                        <span
+                            id="verification-text"
+                            style="font-size: 0.9rem; font-weight: 500"
+                            >メールアドレスが未認証です。機能が制限される場合があります。</span
+                        >
+                    </div>
+                    <div style="display: flex; gap: 10px">
+                        <button
+                            class="glass-button liquidGlass-wrapper"
+                            onclick="resendVerificationEmail()"
+                            style="
+                                padding: 6px 15px;
+                                font-size: 0.8rem;
+                                background: rgba(255, 255, 255, 0.2);
+                            "
+                        >
+                            <div class="liquidGlass-effect"></div>
+                            <div class="liquidGlass-tint"></div>
+                            <div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text"
+                                >認証メールを送信</span
+                            >
+                        </button>
+                        <button
+                            class="glass-button liquidGlass-wrapper"
+                            onclick="location.reload()"
+                            style="
+                                padding: 6px 15px;
+                                font-size: 0.8rem;
+                                background: rgba(255, 255, 255, 0.1);
+                            "
+                        >
+                            <div class="liquidGlass-effect"></div>
+                            <div class="liquidGlass-tint"></div>
+                            <div class="liquidGlass-shine"></div>
+                            <span class="liquidGlass-text">更新</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT -->
+            <div
+                class="container"
+                id="articles-container"
+                style="margin-top: 100px"
+            >
+                <!-- Welcome Banner for Guest -->
+                <div
+                    id="guest-welcome-banner"
+                    class="liquidGlass-wrapper"
+                    style="
+                        margin-bottom: 30px;
+                        padding: 40px;
+                        text-align: center;
+                        border-radius: 20px;
+                        display: none;
+                    "
+                >
+                    <div class="liquidGlass-effect"></div>
+                    <div class="liquidGlass-tint"></div>
+                    <div class="liquidGlass-shine"></div>
+                    <div
+                        class="liquidGlass-text"
+                        style="position: relative; z-index: 3"
+                    >
+                        <h1 style="font-size: 2.5rem; margin-bottom: 10px">
+                            Welcome to Apple News Reader
+                        </h1>
+                        <p
+                            style="
+                                font-size: 1.2rem;
+                                margin-bottom: 25px;
+                                opacity: 0.8;
+                            "
+                        >
+                            世界中のニュースを日本語で。アカウントを作って、あなたの投稿をシェアしましょう。
                         </p>
-                        <button type="button" class="glass-button liquidGlass-wrapper" onclick="sendPasswordResetEmailToUser()" style="width: 100%; padding: 12px; margin-bottom: 20px;">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">再設定メールを送信</span>
-                        </button>
-                    </div>
-
-                    <div class="form-section" style="border-top: 1px solid rgba(255, 59, 48, 0.2); padding-top: 15px;">
-                        <h3 class="form-section-title" style="color: #ff3b30;">アカウントの削除</h3>
-                        <p style="font-size: 0.8rem; margin-bottom: 10px; opacity: 0.7;">この操作は取り消せません。パスワードを入力して実行してください。</p>
-                        <div class="form-group"><input type="password" class="form-input" id="delete-account-password" placeholder="現在のパスワード"></div>
-                        <button type="button" class="glass-button liquidGlass-wrapper" onclick="handleDeleteAccount()" style="width: 100%; padding: 10px; background: rgba(255, 59, 48, 0.1);">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text" style="color: #ff3b30;">アカウントを完全に削除</span>
-                        </button>
-                    </div>
-
-                    <div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeProfileModal()" id="profile-cancel-btn">キャンセル</button><button type="submit" class="btn-primary" id="profile-submit-btn">保存</button></div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- SETTINGS MODAL -->
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal-content liquidGlass-wrapper">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div style="position: relative; z-index: 3;">
-                <div class="modal-header"><h2 class="modal-title" id="settings-modal-title">設定</h2><button class="modal-close" onclick="closeSettingsModal()">✕</button></div>
-                
-                <div class="settings-section" style="margin-bottom: 25px;">
-                    <h3 class="form-section-title" id="settings-lang-title">言語 / Language</h3>
-                    <div class="lang-toggle-horizontal" style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button class="lang-option-btn liquidGlass-wrapper" data-lang="ja" onclick="setLanguage('ja')">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">🇯🇵 日本語</span>
-                        </button>
-                        <button class="lang-option-btn liquidGlass-wrapper" data-lang="en" onclick="setLanguage('en')">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">🇺🇸 English</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="settings-section" style="margin-bottom: 25px;">
-                    <h3 class="form-section-title" id="settings-design-title">デザイン / Design</h3>
-                    <div class="design-toggle-horizontal" style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button class="design-option-btn liquidGlass-wrapper" data-design="default" onclick="setDesign('default')">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">Liquid Glass</span>
-                        </button>
-                        <button class="design-option-btn liquidGlass-wrapper" data-design="lightweight" onclick="setDesign('lightweight')">
-                            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                            <span class="liquidGlass-text">Clean Glass</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="modal-actions" style="margin-top: 30px;">
-                    <button type="button" class="btn-primary" onclick="closeSettingsModal()" id="settings-ok-btn" style="width: 100%;">OK</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ARTICLE DETAIL MODAL -->
-    <div class="modal-overlay" id="articleDetailModal">
-        <div class="modal-content liquidGlass-wrapper modal-lg">
-            <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-            <div style="position: relative; z-index: 3; max-height: 85vh; overflow-y: auto; padding-right: 15px;">
-                <div class="modal-header">
-                    <h2 class="modal-title" id="article-detail-title"></h2>
-                    <button class="modal-close" onclick="closeArticleDetail()">✕</button>
-                </div>
-                <div id="article-detail-body">
-                    <img src="" alt="Article Image" id="article-detail-image" style="display: none;">
-                    <p id="article-detail-content"></p>
-                    <div class="article-meta" style="margin-top: 20px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 15px;">
-                        <span id="article-detail-source"></span>
-                        <a href="#" id="article-detail-link" target="_blank" class="article-link"></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {{ firebase_config | tojson }};
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const firebaseDb = firebase.firestore();
-        const firebaseAuth = firebase.auth();
-
-        // ===== GLOBAL STATE =====
-        let currentLang = localStorage.getItem('language') || 'ja';
-        let currentDesign = localStorage.getItem('design') || 'default';
-        let currentUser = null;
-        let currentDisplayedItems = []; // Holds data for all visible items (posts and articles)
-
-        const translations = {
-            ja: { 
-                appTitle: 'ニュースリーダー', 
-                updateBtn: 'ニュースを更新', 
-                createPost: '➕ 投稿を作成', 
-                modalTitle: '投稿を作成', 
-                labelTitle: 'タイトル', 
-                labelDescription: '説明', 
-                labelImage: '画像', 
-                uploadText: '画像をアップロード', 
-                cancelBtn: 'キャンセル', 
-                submitBtn: '投稿する', 
-                readMore: '続きを読む', 
-                noImage: '画像なし', 
-                userPost: 'あなたの投稿', 
-                updating: '更新中...', 
-                noArticles: '記事が見つかりませんでした。', 
-                placeholderTitle: 'タイトルを入力...', 
-                placeholderDesc: '説明を入力...', 
-                sidebarHome: 'ホーム', 
-                sidebarFavorites: 'お気に入り', 
-                sidebarSettings: '設定', 
-                menuProfile: 'プロフィール設定', 
-                menuPrefs: '環境設定', 
-                menuLogout: 'ログアウト', 
-                menuLogin: 'ログイン', 
-                menuRegister: '新規登録', 
-                searchPlaceholder: '記事を検索...', 
-                searchBtn: '検索', 
-                loginTitle: 'ログイン', 
-                registerTitle: '新規登録', 
-                emailLabel: 'メールアドレス', 
-                passwordLabel: 'パスワード', 
-                confirmPasswordLabel: 'パスワード確認', 
-                profileTitle: 'プロフィール設定', 
-                profileIcon: 'プロフィールアイコン', 
-                profileEmail: 'メールアドレス', 
-                passwordChange: 'パスワード変更', 
-                saveBtn: '保存', 
-                settingsTitle: '設定', 
-                langTitle: '言語', 
-                designTitle: 'デザイン', 
-                designDefault: 'Liquid Glass (デフォルト)', 
-                designLight: 'Clean Glass (軽量版)',
-                resetEmailSent: 'パスワード再設定メールを送信しました。メールフォルダを確認してください。',
-                resetEmailError: 'メール送信に失敗しました。'
-            },
-            en: { 
-                appTitle: 'News Reader', 
-                updateBtn: 'Update News API', 
-                createPost: '➕ Create Post', 
-                modalTitle: 'Create Post', 
-                labelTitle: 'Title', 
-                labelDescription: 'Description', 
-                labelImage: 'Image', 
-                uploadText: 'Upload Image', 
-                cancelBtn: 'Cancel', 
-                submitBtn: 'Submit', 
-                readMore: 'Read More', 
-                noImage: 'No Image', 
-                userPost: 'Your Post', 
-                updating: 'Updating...', 
-                noArticles: 'No articles found yet.', 
-                placeholderTitle: 'Enter title...', 
-                placeholderDesc: 'Enter description...', 
-                sidebarHome: 'Home', 
-                sidebarFavorites: 'Favorites', 
-                sidebarSettings: 'Settings', 
-                menuProfile: 'Profile Settings', 
-                menuPrefs: 'Preferences', 
-                menuLogout: 'Log Out', 
-                menuLogin: 'Login', 
-                menuRegister: 'Register', 
-                searchPlaceholder: 'Search articles...', 
-                searchBtn: 'Search', 
-                loginTitle: 'Login', 
-                registerTitle: 'Register', 
-                emailLabel: 'Email', 
-                passwordLabel: 'Password', 
-                confirmPasswordLabel: 'Confirm Password', 
-                profileTitle: 'Profile Settings', 
-                profileIcon: 'Profile Icon', 
-                profileEmail: 'Email', 
-                passwordChange: 'Change Password', 
-                saveBtn: 'Save', 
-                settingsTitle: 'Settings', 
-                langTitle: 'Language', 
-                designTitle: 'Design', 
-                designDefault: 'Liquid Glass (Default)', 
-                designLight: 'Clean Glass (Light)',
-                resetEmailSent: 'Password reset email sent. Please check your inbox.',
-                resetEmailError: 'Failed to send reset email.'
-            }
-        };
-
-        // ===== CORE FUNCTIONS =====
-        async function sendPasswordResetEmailToUser() {
-            if (!currentUser || !currentUser.email) return;
-            const t = translations[currentLang];
-            try {
-                await firebaseAuth.sendPasswordResetEmail(currentUser.email);
-                alert(t.resetEmailSent);
-                closeProfileModal();
-            } catch (error) {
-                console.error('Password reset error:', error);
-                alert(t.resetEmailError + "\n" + error.message);
-            }
-        }
-
-        async function handleEmailChange() {
-            const newEmail = document.getElementById('new-email-input').value.trim();
-            const password = document.getElementById('email-change-password').value;
-            const user = firebaseAuth.currentUser;
-
-            if (!newEmail || !password) {
-                alert("新しいメールアドレスとパスワードを入力してください。");
-                return;
-            }
-
-            try {
-                // 再認証
-                const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
-                await user.reauthenticateWithCredential(credential);
-                
-                // メール変更 (確認メール送信)
-                await user.verifyBeforeUpdateEmail(newEmail);
-                alert("新しいメールアドレスに確認用メールを送信しました。リンクをクリックして承認してください。");
-                closeProfileModal();
-            } catch (error) {
-                console.error("Email change error:", error);
-                alert("エラーが発生しました: " + error.message);
-            }
-        }
-
-        async function handleDeleteAccount() {
-            const password = document.getElementById('delete-account-password').value;
-            const user = firebaseAuth.currentUser;
-
-            if (!password) {
-                alert("本人確認のためパスワードを入力してください。");
-                return;
-            }
-
-            if (!confirm("本当にアカウントを削除しますか？この操作は取り消せません。")) {
-                return;
-            }
-
-            try {
-                // 再認証
-                const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
-                await user.reauthenticateWithCredential(credential);
-                
-                // Firestoreのユーザーデータ削除 (Backend API経由で行うことも検討)
-                // 今回はAuth削除のみ実装
-                await user.delete();
-                
-                // サーバーセッションのクリア
-                await fetch('/api/auth/logout', { method: 'POST' });
-                alert("アカウントを削除しました。");
-                location.reload();
-            } catch (error) {
-                console.error("Delete account error:", error);
-                alert("エラーが発生しました: " + error.message);
-            }
-        }
-        function setLanguage(lang) {
-            currentLang = lang;
-            localStorage.setItem('language', lang);
-            
-            // Update active states for all language toggle buttons
-            document.querySelectorAll('.lang-option, .lang-option-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.lang === lang);
-            });
-            
-            const t = translations[lang];
-            document.getElementById('update-btn-text').textContent = t.updateBtn;
-            document.getElementById('create-post-text').textContent = t.createPost;
-            document.getElementById('search-input').placeholder = t.searchPlaceholder;
-            document.getElementById('search-btn-text').textContent = t.searchBtn;
-            document.getElementById('sidebar-home').textContent = t.sidebarHome;
-            document.getElementById('sidebar-favorites').textContent = t.sidebarFavorites;
-            document.getElementById('sidebar-settings').textContent = t.sidebarSettings;
-            
-            // Settings Modal Translations
-            document.getElementById('settings-modal-title').textContent = t.settingsTitle;
-            document.getElementById('settings-lang-title').textContent = t.langTitle;
-            document.getElementById('settings-design-title').textContent = t.designTitle;
-            
-            // Note: loadAllContent is now handled by the initialization flow to prevent duplicates
-        }
-
-        function setDesign(design) {
-            currentDesign = design;
-            localStorage.setItem('design', design);
-            
-            // Update active states for design toggle buttons
-            document.querySelectorAll('.design-option-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.design === design);
-            });
-
-            if (design === 'lightweight') {
-                document.body.classList.add('lightweight-mode');
-            } else {
-                document.body.classList.remove('lightweight-mode');
-            }
-        }
-
-        function escapeHtml(text) {
-            if (text === null || typeof text === 'undefined') return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // ===== MODAL MANAGEMENT =====
-        function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
-        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
-
-        function openCreatePostModal() { openModal('createPostModal'); }
-        function closeCreatePostModal() { closeModal('createPostModal'); document.getElementById('createPostForm').reset(); document.getElementById('image-preview').style.display = 'none'; }
-        
-        function openSettingsModal() { 
-            // Ensure buttons reflect current state
-            document.querySelectorAll('.lang-option-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === currentLang));
-            document.querySelectorAll('.design-option-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.design === currentDesign));
-            openModal('settingsModal'); 
-        }
-        function closeSettingsModal() { closeModal('settingsModal'); }
-
-        function openAuthModal(mode) { switchAuthTab(mode); openModal('authModal'); }
-        function closeAuthModal() { closeModal('authModal'); document.getElementById('loginForm').reset(); document.getElementById('registerForm').reset(); }
-        
-        function openProfileModal() {
-            if (!currentUser) return;
-            document.getElementById('profile-email').value = currentUser.email;
-            const preview = document.getElementById('profile-icon-preview');
-            const placeholder = document.getElementById('profile-icon-placeholder');
-            if (currentUser.icon) { preview.src = currentUser.icon; preview.style.display = 'block'; placeholder.style.display = 'none'; }
-            else { preview.style.display = 'none'; placeholder.style.display = 'block'; }
-            openModal('profileModal');
-        }
-        function closeProfileModal() { closeModal('profileModal'); document.getElementById('profileForm').reset(); }
-
-        function openArticleDetailByIndex(index) {
-            const item = currentDisplayedItems[index];
-            if (item) {
-                if (!item.timestamp) openArticleDetail(item);
-                else console.log("User post clicked. No detail view for this type yet.");
-            }
-        }
-        function openArticleDetail(article) {
-            const t = translations[currentLang];
-            const title = currentLang === 'ja' ? article.title_ja : article.title_en;
-            const content = (currentLang === 'ja' ? article.content_ja : article.content_en) || (currentLang === 'ja' ? article.description_ja : article.description_en);
-            const sourceName = article.source ? (article.source.name || article.source) : '';
-
-            document.getElementById('article-detail-title').textContent = title;
-            const img = document.getElementById('article-detail-image');
-            if (article.urlToImage) { img.src = article.urlToImage; img.style.display = 'block'; } else { img.style.display = 'none'; }
-            document.getElementById('article-detail-content').textContent = content;
-            document.getElementById('article-detail-source').textContent = sourceName;
-            const link = document.getElementById('article-detail-link');
-            link.href = article.url;
-            link.textContent = t.readMore;
-            openModal('articleDetailModal');
-        }
-        function closeArticleDetail() { closeModal('articleDetailModal'); }
-
-        function previewImage(event, previewId) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => { document.getElementById(previewId).src = e.target.result; document.getElementById(previewId).style.display = 'block'; };
-                reader.readAsDataURL(file);
-            }
-        }
-        
-        // ===== UI & NAVIGATION =====
-        function switchAuthTab(mode) {
-            const t = translations[currentLang];
-            const isLogin = mode === 'login';
-            document.getElementById('login-tab').classList.toggle('active', isLogin);
-            document.getElementById('register-tab').classList.toggle('active', !isLogin);
-            document.getElementById('loginForm').style.display = isLogin ? 'flex' : 'none';
-            document.getElementById('registerForm').style.display = isLogin ? 'none' : 'flex';
-            document.getElementById('auth-modal-title').textContent = isLogin ? t.loginTitle : t.registerTitle;
-        }
-
-        function navigateHome() { loadAllContent(); }
-        function navigateFavorites() { alert(translations[currentLang].sidebarFavorites + ' is under development.'); }
-        function navigateSettings() { openSettingsModal(); }
-        
-        function toggleUserMenu() {
-            const menu = document.getElementById('userMenu');
-            menu.classList.toggle('active');
-            const closeHandler = e => { if (!e.target.closest('.sidebar-user')) { menu.classList.remove('active'); document.removeEventListener('click', closeHandler); } };
-            document.addEventListener('click', closeHandler);
-        }
-
-        // ===== DATA FETCHING & RENDERING =====
-        async function loadAllContent() {
-            const container = document.getElementById('articles-container');
-            const updateBtn = document.getElementById('api-update-btn');
-            const t = translations[currentLang];
-            
-            // 防止：多重クリック
-            if (updateBtn.disabled) return;
-            
-            container.innerHTML = `<div class="no-articles"><p>${t.updating}</p></div>`;
-            updateBtn.disabled = true;
-            const originalText = document.getElementById('update-btn-text').textContent;
-            document.getElementById('update-btn-text').textContent = t.updating;
-
-            try {
-                const [postsRes, articlesRes] = await Promise.all([ 
-                    fetch('/api/posts'), 
-                    fetch(`/api/update?lang=${currentLang}`) 
-                ]);
-                const posts = await postsRes.json();
-                const articles = await articlesRes.json();
-                renderAllContent(posts, articles, container);
-            } catch (error) {
-                console.error('Error loading content:', error);
-                container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
-            } finally {
-                updateBtn.disabled = false;
-                document.getElementById('update-btn-text').textContent = originalText;
-            }
-        }
-
-        async function performSearch(query) {
-            const container = document.getElementById('articles-container');
-            const t = translations[currentLang];
-            if (!query) { loadAllContent(); return; }
-            container.innerHTML = `<div class="no-articles"><p>${t.updating}</p></div>`;
-            try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&lang=${currentLang}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                renderAllContent(data.posts || [], data.articles || [], container);
-            } catch (error) {
-                console.error('Search error:', error);
-                container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
-            }
-        }
-
-        function renderAllContent(posts, articles, container) {
-            const t = translations[currentLang];
-            currentDisplayedItems = [...(posts || []), ...(articles || [])];
-            if (currentDisplayedItems.length === 0) {
-                container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
-                return;
-            }
-            container.innerHTML = `<div class="articles-grid">${currentDisplayedItems.map((item, index) => 
-                item.timestamp ? renderUserPost(item, t, index) : renderArticle(item, t, index)
-            ).join('')}</div>`;
-        }
-
-        function renderUserPost(post, t, index) {
-            // Use author_email if available, otherwise fallback to 'User'
-            const authorName = post.author_email ? post.author_email.split('@')[0] : 'User';
-            
-            // Image handling: check image_base64 (iOS) first, then image (Web)
-            let imageHtml = `<div class="article-image-placeholder">${t.noImage}</div>`;
-            if (post.image_base64) {
-                imageHtml = `<img src="data:image/jpeg;base64,${post.image_base64}" class="article-image">`;
-            } else if (post.image) {
-                imageHtml = `<img src="${escapeHtml(post.image)}" class="article-image">`;
-            }
-
-            return `
-                <div class="article-card liquidGlass-wrapper" onclick="openArticleDetailByIndex(${index})">
-                    <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                    <div class="liquidGlass-text" style="width: 100%; position: relative; z-index: 3;">
-                        <div style="margin-bottom: 10px; display:flex; align-items:center; gap:8px;">
-                            <span class="user-post-badge" style="background: rgba(0,113,227,0.8);">${escapeHtml(authorName)}</span>
+                        <div
+                            style="
+                                display: flex;
+                                justify-content: center;
+                                gap: 15px;
+                            "
+                        >
+                            <button
+                                class="btn-primary"
+                                onclick="openAuthModal('register')"
+                                style="padding: 12px 30px; font-size: 1.1rem"
+                            >
+                                今すぐ新規登録
+                            </button>
+                            <button
+                                class="btn-secondary"
+                                onclick="openAuthModal('login')"
+                                style="padding: 12px 30px; font-size: 1.1rem"
+                            >
+                                ログイン
+                            </button>
                         </div>
-                        <div class="article-header">
-                            ${imageHtml}
-                            <div class="article-content">
-                                <h2 class="article-title-ja">${escapeHtml(post.title)}</h2>
-                                ${post.description ? `<p class="article-description-ja">${escapeHtml(post.description)}</p>` : ''}
+                    </div>
+                </div>
+                <!-- Articles will be rendered here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- MODALS -->
+        <!-- CREATE POST MODAL -->
+        <div class="modal-overlay" id="createPostModal">
+            <div class="modal-content liquidGlass-wrapper">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div style="position: relative; z-index: 3">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="modal-title">投稿を作成</h2>
+                        <button
+                            class="modal-close"
+                            onclick="closeCreatePostModal()"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <form
+                        id="createPostForm"
+                        class="modal-form"
+                        enctype="multipart/form-data"
+                    >
+                        <div class="form-group">
+                            <label class="form-label" id="label-title"
+                                >タイトル</label
+                            ><input
+                                type="text"
+                                class="form-input"
+                                id="post-title"
+                                name="title"
+                                required
+                                placeholder="タイトルを入力..."
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="label-description"
+                                >説明</label
+                            ><textarea
+                                class="form-textarea"
+                                id="post-description"
+                                name="description"
+                                placeholder="説明を入力..."
+                            ></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="label-image"
+                                >画像</label
+                            >
+                            <div class="file-upload-wrapper">
+                                <label
+                                    for="post-image"
+                                    class="file-upload-label"
+                                    ><span>📁</span
+                                    ><span
+                                        class="file-upload-text"
+                                        id="upload-text"
+                                        >画像をアップロード</span
+                                    ></label
+                                >
+                                <input
+                                    type="file"
+                                    class="file-upload-input"
+                                    id="post-image"
+                                    name="image"
+                                    accept="image/*"
+                                    onchange="previewImage(event)"
+                                />
+                                <img
+                                    id="image-preview"
+                                    class="file-preview"
+                                    style="display: none"
+                                />
                             </div>
                         </div>
-                        <div class="article-meta"><span>${new Date(post.timestamp).toLocaleString(currentLang === 'ja' ? 'ja-JP' : 'en-US')}</span></div>
-                    </div>
-                </div>`;
-        }
+                        <div class="modal-actions">
+                            <button
+                                type="button"
+                                class="btn-secondary"
+                                onclick="closeCreatePostModal()"
+                                id="cancel-btn"
+                            >
+                                キャンセル</button
+                            ><button
+                                type="submit"
+                                class="btn-primary"
+                                id="submit-btn"
+                            >
+                                投稿する
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
-        function renderArticle(article, t, index) {
-            const title = currentLang === 'ja' ? article.title_ja : article.title_en;
-            const description = currentLang === 'ja' ? article.description_ja : article.description_en;
-            return `
-                <div class="article-card liquidGlass-wrapper" onclick="openArticleDetailByIndex(${index})">
-                    <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
-                    <div class="liquidGlass-text" style="width: 100%; position: relative; z-index: 3;">
-                        <div class="article-header">
-                            ${article.urlToImage ? `<img src="${escapeHtml(article.urlToImage)}" class="article-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="article-image-placeholder" style="display:none">${t.noImage}</div>` : `<div class="article-image-placeholder">${t.noImage}</div>`}
-                            <div class="article-content">
-                                <h2 class="article-title-ja">${escapeHtml(title)}</h2>
-                                ${description ? `<p class="article-description-ja">${escapeHtml(description)}</p>` : ''}
+        <!-- AUTHENTICATION MODAL -->
+        <div class="modal-overlay" id="authModal">
+            <div class="modal-content liquidGlass-wrapper">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div style="position: relative; z-index: 3">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="auth-modal-title">
+                            ログイン
+                        </h2>
+                        <button class="modal-close" onclick="closeAuthModal()">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="auth-tabs">
+                        <button
+                            class="auth-tab active"
+                            id="login-tab"
+                            onclick="switchAuthTab('login')"
+                        >
+                            <span id="login-tab-text">ログイン</span>
+                        </button>
+                        <button
+                            class="auth-tab"
+                            id="register-tab"
+                            onclick="switchAuthTab('register')"
+                        >
+                            <span id="register-tab-text">新規登録</span>
+                        </button>
+                    </div>
+                    <!-- LOGIN FORM -->
+                    <form
+                        id="loginForm"
+                        class="modal-form auth-form"
+                        style="display: flex; flex-direction: column"
+                    >
+                        <div class="form-group">
+                            <label class="form-label" id="login-label-email"
+                                >メールアドレス</label
+                            ><input
+                                type="email"
+                                class="form-input"
+                                id="login-email"
+                                name="email"
+                                required
+                                placeholder="email@example.com"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="login-label-password"
+                                >パスワード</label
+                            ><input
+                                type="password"
+                                class="form-input"
+                                id="login-password"
+                                name="password"
+                                required
+                                placeholder="パスワード"
+                            />
+                        </div>
+                        <div class="modal-actions">
+                            <button
+                                type="button"
+                                class="btn-secondary"
+                                onclick="closeAuthModal()"
+                                id="login-cancel-btn"
+                            >
+                                キャンセル</button
+                            ><button
+                                type="submit"
+                                class="btn-primary"
+                                id="login-submit-btn"
+                            >
+                                ログイン
+                            </button>
+                        </div>
+                    </form>
+                    <!-- REGISTER FORM -->
+                    <form
+                        id="registerForm"
+                        class="modal-form auth-form"
+                        style="display: none; flex-direction: column"
+                    >
+                        <div class="form-group">
+                            <label class="form-label" id="register-label-email"
+                                >メールアドレス</label
+                            ><input
+                                type="email"
+                                class="form-input"
+                                id="register-email"
+                                name="email"
+                                required
+                                placeholder="email@example.com"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label
+                                class="form-label"
+                                id="register-label-password"
+                                >パスワード</label
+                            ><input
+                                type="password"
+                                class="form-input"
+                                id="register-password"
+                                name="password"
+                                required
+                                placeholder="パスワード"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label
+                                class="form-label"
+                                id="register-label-confirm"
+                                >パスワード確認</label
+                            ><input
+                                type="password"
+                                class="form-input"
+                                id="register-confirm"
+                                name="confirm"
+                                required
+                                placeholder="パスワードを再入力"
+                            />
+                        </div>
+                        <div class="modal-actions">
+                            <button
+                                type="button"
+                                class="btn-secondary"
+                                onclick="closeAuthModal()"
+                                id="register-cancel-btn"
+                            >
+                                キャンセル</button
+                            ><button
+                                type="submit"
+                                class="btn-primary"
+                                id="register-submit-btn"
+                            >
+                                新規登録
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE SETTINGS MODAL -->
+        <div class="modal-overlay" id="profileModal">
+            <div class="modal-content liquidGlass-wrapper">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div style="position: relative; z-index: 3">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="profile-modal-title">
+                            プロフィール設定
+                        </h2>
+                        <button
+                            class="modal-close"
+                            onclick="closeProfileModal()"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <form
+                        id="profileForm"
+                        class="modal-form"
+                        enctype="multipart/form-data"
+                    >
+                        <div class="form-group">
+                            <label class="form-label" id="profile-label-icon"
+                                >プロフィールアイコン</label
+                            >
+                            <div class="profile-icon-wrapper">
+                                <img
+                                    id="profile-icon-preview"
+                                    class="profile-icon-large"
+                                    src=""
+                                    alt="Profile Icon"
+                                    style="display: none"
+                                />
+                                <div
+                                    id="profile-icon-placeholder"
+                                    class="profile-icon-large"
+                                >
+                                    ●
+                                </div>
+                                <label
+                                    for="profile-icon-input"
+                                    class="icon-upload-label"
+                                    ><span>📷 変更</span></label
+                                >
+                                <input
+                                    type="file"
+                                    id="profile-icon-input"
+                                    name="icon"
+                                    accept="image/*"
+                                    style="display: none"
+                                    onchange="previewProfileIcon(event)"
+                                />
                             </div>
                         </div>
-                        <div class="article-meta">
-                             ${article.source ? `<span>${escapeHtml(article.source.name || article.source)}</span>` : ''}
-                             <a href="${escapeHtml(article.url)}" target="_blank" class="article-link">${t.readMore}</a>
+                        <div class="form-group">
+                            <label class="form-label" id="profile-label-email"
+                                >メールアドレス</label
+                            ><input
+                                type="email"
+                                class="form-input"
+                                id="profile-email"
+                                name="email"
+                                placeholder="email@example.com"
+                            />
+                        </div>
+
+                        <div class="form-section">
+                            <h3 class="form-section-title">
+                                メールアドレス変更
+                            </h3>
+                            <p
+                                style="
+                                    font-size: 0.8rem;
+                                    margin-bottom: 10px;
+                                    opacity: 0.7;
+                                "
+                            >
+                                新しいメールアドレスを入力し、現在のパスワードで認証してください。
+                            </p>
+                            <div class="form-group">
+                                <input
+                                    type="email"
+                                    class="form-input"
+                                    id="new-email-input"
+                                    placeholder="新しいメールアドレス"
+                                />
+                            </div>
+                            <div class="form-group">
+                                <input
+                                    type="password"
+                                    class="form-input"
+                                    id="email-change-password"
+                                    placeholder="現在のパスワード"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                class="glass-button liquidGlass-wrapper"
+                                onclick="handleEmailChange()"
+                                style="width: 100%; padding: 10px"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text"
+                                    >メールアドレスを変更</span
+                                >
+                            </button>
+                        </div>
+
+                        <div class="form-section">
+                            <h3
+                                class="form-section-title"
+                                id="profile-password-title"
+                            >
+                                セキュリティ
+                            </h3>
+                            <p
+                                style="
+                                    font-size: 0.9rem;
+                                    margin-bottom: 15px;
+                                    opacity: 0.8;
+                                    color: var(--text-color, #fff);
+                                "
+                            >
+                                パスワードを変更するには、登録済みのメールアドレスに再設定用リンクを送信します。
+                            </p>
+                            <button
+                                type="button"
+                                class="glass-button liquidGlass-wrapper"
+                                onclick="sendPasswordResetEmailToUser()"
+                                style="
+                                    width: 100%;
+                                    padding: 12px;
+                                    margin-bottom: 20px;
+                                "
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text"
+                                    >再設定メールを送信</span
+                                >
+                            </button>
+                        </div>
+
+                        <div
+                            class="form-section"
+                            style="
+                                border-top: 1px solid rgba(255, 59, 48, 0.2);
+                                padding-top: 15px;
+                            "
+                        >
+                            <h3
+                                class="form-section-title"
+                                style="color: #ff3b30"
+                            >
+                                アカウントの削除
+                            </h3>
+                            <p
+                                style="
+                                    font-size: 0.8rem;
+                                    margin-bottom: 10px;
+                                    opacity: 0.7;
+                                "
+                            >
+                                この操作は取り消せません。パスワードを入力して実行してください。
+                            </p>
+                            <div class="form-group">
+                                <input
+                                    type="password"
+                                    class="form-input"
+                                    id="delete-account-password"
+                                    placeholder="現在のパスワード"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                class="glass-button liquidGlass-wrapper"
+                                onclick="handleDeleteAccount()"
+                                style="
+                                    width: 100%;
+                                    padding: 10px;
+                                    background: rgba(255, 59, 48, 0.1);
+                                "
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span
+                                    class="liquidGlass-text"
+                                    style="color: #ff3b30"
+                                    >アカウントを完全に削除</span
+                                >
+                            </button>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button
+                                type="button"
+                                class="btn-secondary"
+                                onclick="closeProfileModal()"
+                                id="profile-cancel-btn"
+                            >
+                                キャンセル</button
+                            ><button
+                                type="submit"
+                                class="btn-primary"
+                                id="profile-submit-btn"
+                            >
+                                保存
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS MODAL -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="modal-content liquidGlass-wrapper">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div style="position: relative; z-index: 3">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="settings-modal-title">
+                            設定
+                        </h2>
+                        <button
+                            class="modal-close"
+                            onclick="closeSettingsModal()"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="settings-section" style="margin-bottom: 25px">
+                        <h3 class="form-section-title" id="settings-lang-title">
+                            言語 / Language
+                        </h3>
+                        <div
+                            class="lang-toggle-horizontal"
+                            style="display: flex; gap: 10px; margin-top: 10px"
+                        >
+                            <button
+                                class="lang-option-btn liquidGlass-wrapper"
+                                data-lang="ja"
+                                onclick="setLanguage('ja')"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text">🇯🇵 日本語</span>
+                            </button>
+                            <button
+                                class="lang-option-btn liquidGlass-wrapper"
+                                data-lang="en"
+                                onclick="setLanguage('en')"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text">🇺🇸 English</span>
+                            </button>
                         </div>
                     </div>
-                </div>`;
-        }
 
-        // ===== AUTHENTICATION =====
-        async function checkAuthStatus() {
-            try {
-                const response = await fetch('/api/auth/current');
-                const data = await response.json();
-                currentUser = data.logged_in ? data : null;
-                updateUIForAuth();
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-                currentUser = null;
-                updateUIForAuth();
-            }
-        }
+                    <div class="settings-section" style="margin-bottom: 25px">
+                        <h3
+                            class="form-section-title"
+                            id="settings-design-title"
+                        >
+                            デザイン / Design
+                        </h3>
+                        <div
+                            class="design-toggle-horizontal"
+                            style="display: flex; gap: 10px; margin-top: 10px"
+                        >
+                            <button
+                                class="design-option-btn liquidGlass-wrapper"
+                                data-design="default"
+                                onclick="setDesign('default')"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text"
+                                    >Liquid Glass</span
+                                >
+                            </button>
+                            <button
+                                class="design-option-btn liquidGlass-wrapper"
+                                data-design="lightweight"
+                                onclick="setDesign('lightweight')"
+                            >
+                                <div class="liquidGlass-effect"></div>
+                                <div class="liquidGlass-tint"></div>
+                                <div class="liquidGlass-shine"></div>
+                                <span class="liquidGlass-text"
+                                    >Clean Glass</span
+                                >
+                            </button>
+                        </div>
+                    </div>
 
-        async function resendVerificationEmail() {
-            if (!firebaseAuth.currentUser) return;
-            try {
-                await firebaseAuth.currentUser.sendEmailVerification();
-                alert("認証メールを送信しました。メールを確認してください。");
-            } catch (error) {
-                console.error("Verification error:", error);
-                alert("エラーが発生しました: " + error.message);
-            }
-        }
+                    <div class="modal-actions" style="margin-top: 30px">
+                        <button
+                            type="button"
+                            class="btn-primary"
+                            onclick="closeSettingsModal()"
+                            id="settings-ok-btn"
+                            style="width: 100%"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        function updateUIForAuth() {
-            const loggedInMenu = document.getElementById('menu-logged-in');
-            const loggedOutMenu = document.getElementById('menu-logged-out');
-            const avatar = document.getElementById('userAvatar');
-            const authButtons = document.getElementById('auth-buttons');
-            const guestButtons = document.getElementById('guest-buttons');
-            const logoutBtn = document.getElementById('top-logout-btn');
-            const welcomeBanner = document.getElementById('guest-welcome-banner');
-            const verificationBanner = document.getElementById('email-verification-banner');
+        <!-- ARTICLE DETAIL MODAL -->
+        <div class="modal-overlay" id="articleDetailModal">
+            <div class="modal-content liquidGlass-wrapper modal-lg">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div
+                    style="
+                        position: relative;
+                        z-index: 3;
+                        max-height: 85vh;
+                        overflow-y: auto;
+                        padding-right: 15px;
+                    "
+                >
+                    <div
+                        class="modal-header"
+                        style="justify-content: flex-end; margin-bottom: 10px"
+                    >
+                        <button
+                            class="modal-close"
+                            onclick="closeArticleDetail()"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div
+                        id="article-detail-body"
+                        class="article-detail-container"
+                    >
+                        <div class="article-detail-image-wrapper">
+                            <img
+                                src=""
+                                alt="Article Image"
+                                id="article-detail-image"
+                                style="display: none"
+                            />
+                        </div>
+                        <div class="article-detail-content-wrapper">
+                            <h2
+                                id="article-detail-title"
+                                class="article-detail-title"
+                            ></h2>
+                            <p id="article-detail-content"></p>
+                            <div
+                                class="article-meta"
+                                style="
+                                    margin-top: 20px;
+                                    border-top: 1px solid rgba(0, 0, 0, 0.1);
+                                    padding-top: 15px;
+                                "
+                            >
+                                <span id="article-detail-source"></span>
+                                <a
+                                    href="#"
+                                    id="article-detail-link"
+                                    target="_blank"
+                                    class="article-link"
+                                ></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            if (currentUser) {
-                // Logged In State
-                loggedInMenu.style.display = 'block';
-                loggedOutMenu.style.display = 'none';
-                
-                // Email Verification Check
-                const firebaseUser = firebaseAuth.currentUser;
-                if (firebaseUser && !firebaseUser.emailVerified) {
-                    verificationBanner.style.display = 'block';
-                } else {
-                    verificationBanner.style.display = 'none';
-                }
-                
-                // Top bar buttons
-                if (authButtons) authButtons.style.display = 'flex'; // Container visible
-                if (guestButtons) guestButtons.style.display = 'none';
-                if (logoutBtn) logoutBtn.style.display = 'flex';
+        <!-- Scripts -->
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
-                if (welcomeBanner) welcomeBanner.style.display = 'none';
-                
-                avatar.style.backgroundImage = currentUser.icon ? `url(${currentUser.icon})` : '';
-                avatar.textContent = currentUser.icon ? '' : (currentUser.email.charAt(0).toUpperCase() || '●');
-            } else {
-                // Logged Out State
-                loggedInMenu.style.display = 'none';
-                loggedOutMenu.style.display = 'block';
-                verificationBanner.style.display = 'none';
-                
-                // Top bar buttons
-                if (authButtons) authButtons.style.display = 'flex';
-                if (guestButtons) guestButtons.style.display = 'flex';
-                if (logoutBtn) logoutBtn.style.display = 'none';
+        <script>
+                    // Firebase configuration
+                    const firebaseConfig = {{ firebase_config | tojson }};
 
-                if (welcomeBanner) welcomeBanner.style.display = 'block';
-                
-                avatar.style.backgroundImage = '';
-                avatar.textContent = '●';
-            }
-        }
+                    // Initialize Firebase
+                    firebase.initializeApp(firebaseConfig);
+                    const firebaseDb = firebase.firestore();
+                    const firebaseAuth = firebase.auth();
 
-        // Firebase Auth Handler
-        async function handleFirebaseAuth(email, password, isRegister) {
-            try {
-                let userCredential;
-                if (isRegister) {
-                    userCredential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
-                } else {
-                    userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
-                }
-                const user = userCredential.user;
-                const idToken = await user.getIdToken();
+                    // ===== GLOBAL STATE =====
+                    let currentLang = localStorage.getItem('language') || 'ja';
+                    let currentDesign = localStorage.getItem('design') || 'default';
+                    let currentUser = null;
+                    let firebaseUser = null;
+                    let currentDisplayedItems = []; // Holds data for all visible items (posts and articles)
 
-                // Backend session sync
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ idToken: idToken })
+                    const translations = {
+                        ja: {
+                            appTitle: 'ニュースリーダー',
+                            updateBtn: 'ニュースを更新',
+                            createPost: '➕ 投稿を作成',
+                            modalTitle: '投稿を作成',
+                            labelTitle: 'タイトル',
+                            labelDescription: '説明',
+                            labelImage: '画像',
+                            uploadText: '画像をアップロード',
+                            cancelBtn: 'キャンセル',
+                            submitBtn: '投稿する',
+                            readMore: '続きを読む',
+                            noImage: '画像なし',
+                            userPost: 'あなたの投稿',
+                            updating: '更新中...',
+                            noArticles: '記事が見つかりませんでした。',
+                            placeholderTitle: 'タイトルを入力...',
+                            placeholderDesc: '説明を入力...',
+                            sidebarHome: 'ホーム',
+                            sidebarFavorites: 'お気に入り',
+                            sidebarSettings: '設定',
+                            menuProfile: 'プロフィール設定',
+                            menuPrefs: '環境設定',
+                            menuLogout: 'ログアウト',
+                            menuLogin: 'ログイン',
+                            menuRegister: '新規登録',
+                            searchPlaceholder: '記事を検索...',
+                            searchBtn: '検索',
+                            loginTitle: 'ログイン',
+                            registerTitle: '新規登録',
+                            emailLabel: 'メールアドレス',
+                            passwordLabel: 'パスワード',
+                            confirmPasswordLabel: 'パスワード確認',
+                            profileTitle: 'プロフィール設定',
+                            profileIcon: 'プロフィールアイコン',
+                            profileEmail: 'メールアドレス',
+                            passwordChange: 'パスワード変更',
+                            saveBtn: '保存',
+                            settingsTitle: '設定',
+                            langTitle: '言語',
+                            designTitle: 'デザイン',
+                            designDefault: 'Liquid Glass (デフォルト)',
+                            designLight: 'Clean Glass (軽量版)',
+                            resetEmailSent: 'パスワード再設定メールを送信しました。メールフォルダを確認してください。',
+                            resetEmailError: 'メール送信に失敗しました。'
+                        },
+                        en: {
+                            appTitle: 'News Reader',
+                            updateBtn: 'Update News API',
+                            createPost: '➕ Create Post',
+                            modalTitle: 'Create Post',
+                            labelTitle: 'Title',
+                            labelDescription: 'Description',
+                            labelImage: 'Image',
+                            uploadText: 'Upload Image',
+                            cancelBtn: 'Cancel',
+                            submitBtn: 'Submit',
+                            readMore: 'Read More',
+                            noImage: 'No Image',
+                            userPost: 'Your Post',
+                            updating: 'Updating...',
+                            noArticles: 'No articles found yet.',
+                            placeholderTitle: 'Enter title...',
+                            placeholderDesc: 'Enter description...',
+                            sidebarHome: 'Home',
+                            sidebarFavorites: 'Favorites',
+                            sidebarSettings: 'Settings',
+                            menuProfile: 'Profile Settings',
+                            menuPrefs: 'Preferences',
+                            menuLogout: 'Log Out',
+                            menuLogin: 'Login',
+                            menuRegister: 'Register',
+                            searchPlaceholder: 'Search articles...',
+                            searchBtn: 'Search',
+                            loginTitle: 'Login',
+                            registerTitle: 'Register',
+                            emailLabel: 'Email',
+                            passwordLabel: 'Password',
+                            confirmPasswordLabel: 'Confirm Password',
+                            profileTitle: 'Profile Settings',
+                            profileIcon: 'Profile Icon',
+                            profileEmail: 'Email',
+                            passwordChange: 'Change Password',
+                            saveBtn: 'Save',
+                            settingsTitle: 'Settings',
+                            langTitle: 'Language',
+                            designTitle: 'Design',
+                            designDefault: 'Liquid Glass (Default)',
+                            designLight: 'Clean Glass (Light)',
+                            resetEmailSent: 'Password reset email sent. Please check your inbox.',
+                            resetEmailError: 'Failed to send reset email.'
+                        }
+                    };
+
+                    // ===== CORE FUNCTIONS =====
+                    async function sendPasswordResetEmailToUser() {
+                        if (!currentUser || !currentUser.email) return;
+                        const t = translations[currentLang];
+                        try {
+                            await firebaseAuth.sendPasswordResetEmail(currentUser.email);
+                            alert(t.resetEmailSent);
+                            closeProfileModal();
+                        } catch (error) {
+                            console.error('Password reset error:', error);
+                            alert(t.resetEmailError + "\n" + error.message);
+                        }
+                    }
+
+                    async function handleEmailChange() {
+                        const newEmail = document.getElementById('new-email-input').value.trim();
+                        const password = document.getElementById('email-change-password').value;
+                        const user = firebaseAuth.currentUser;
+
+                        if (!newEmail || !password) {
+                            alert("新しいメールアドレスとパスワードを入力してください。");
+                            return;
+                        }
+
+                        try {
+                            // 再認証
+                            const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+                            await user.reauthenticateWithCredential(credential);
+
+                            // メール変更 (確認メール送信)
+                            await user.verifyBeforeUpdateEmail(newEmail);
+                            alert("新しいメールアドレスに確認用メールを送信しました。リンクをクリックして承認してください。");
+                            closeProfileModal();
+                        } catch (error) {
+                            console.error("Email change error:", error);
+                            alert("エラーが発生しました: " + error.message);
+                        }
+                    }
+
+                    async function handleDeleteAccount() {
+                        const password = document.getElementById('delete-account-password').value;
+                        const user = firebaseAuth.currentUser;
+
+                        if (!password) {
+                            alert("本人確認のためパスワードを入力してください。");
+                            return;
+                        }
+
+                        if (!confirm("本当にアカウントを削除しますか？この操作は取り消せません。")) {
+                            return;
+                        }
+
+                        try {
+                            // 再認証
+                            const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+                            await user.reauthenticateWithCredential(credential);
+
+                            // Firestoreのユーザーデータ削除 (Backend API経由で行うことも検討)
+                            // 今回はAuth削除のみ実装
+                            await user.delete();
+
+                            // サーバーセッションのクリア
+                            await fetch('/api/auth/logout', { method: 'POST' });
+                            alert("アカウントを削除しました。");
+                            location.reload();
+                        } catch (error) {
+                            console.error("Delete account error:", error);
+                            alert("エラーが発生しました: " + error.message);
+                        }
+                    }
+                    function setLanguage(lang) {
+                        currentLang = lang;
+                        localStorage.setItem('language', lang);
+
+                        // Update active states for all language toggle buttons
+                        document.querySelectorAll('.lang-option, .lang-option-btn').forEach(btn => {
+                            btn.classList.toggle('active', btn.dataset.lang === lang);
+                        });
+
+                        const t = translations[lang];
+                        document.getElementById('update-btn-text').textContent = t.updateBtn;
+                        document.getElementById('create-post-text').textContent = t.createPost;
+                        document.getElementById('search-input').placeholder = t.searchPlaceholder;
+                        document.getElementById('search-btn-text').textContent = t.searchBtn;
+                        document.getElementById('sidebar-home').textContent = t.sidebarHome;
+                        document.getElementById('sidebar-favorites').textContent = t.sidebarFavorites;
+                        document.getElementById('sidebar-settings').textContent = t.sidebarSettings;
+
+                        // Top bar buttons
+                        const topLoginBtn = document.getElementById('top-login-btn');
+                        if (topLoginBtn) topLoginBtn.querySelector('.liquidGlass-text').textContent = t.menuLogin;
+                        
+                        const topRegisterBtn = document.getElementById('top-register-btn');
+                        if (topRegisterBtn) topRegisterBtn.querySelector('.liquidGlass-text').textContent = t.menuRegister;
+                        
+                        const topLogoutBtn = document.getElementById('top-logout-btn');
+                        if (topLogoutBtn) topLogoutBtn.querySelector('.liquidGlass-text').textContent = t.menuLogout;
+
+                        // Modal form labels and buttons
+                        document.getElementById('login-label-email').textContent = t.emailLabel;
+                        document.getElementById('login-label-password').textContent = t.passwordLabel;
+                        document.getElementById('login-cancel-btn').textContent = t.cancelBtn;
+                        document.getElementById('login-submit-btn').textContent = t.menuLogin;
+                        
+                        document.getElementById('register-label-email').textContent = t.emailLabel;
+                        document.getElementById('register-label-password').textContent = t.passwordLabel;
+                        document.getElementById('register-label-confirm').textContent = t.confirmPasswordLabel;
+                        document.getElementById('register-cancel-btn').textContent = t.cancelBtn;
+                        document.getElementById('register-submit-btn').textContent = t.menuRegister;
+
+                        // Create post modal
+                        document.getElementById('modal-title').textContent = t.modalTitle;
+                        document.getElementById('label-title').textContent = t.labelTitle;
+                        document.getElementById('label-description').textContent = t.labelDescription;
+                        document.getElementById('label-image').textContent = t.labelImage;
+                        document.getElementById('upload-text').textContent = t.uploadText;
+                        document.getElementById('cancel-btn').textContent = t.cancelBtn;
+                        document.getElementById('submit-btn').textContent = t.submitBtn;
+
+                        // Profile modal
+                        document.getElementById('profile-modal-title').textContent = t.profileTitle;
+                        document.getElementById('profile-label-icon').textContent = t.profileIcon;
+                        document.getElementById('profile-label-email').textContent = t.profileEmail;
+                        document.getElementById('profile-cancel-btn').textContent = t.cancelBtn;
+                        document.getElementById('profile-submit-btn').textContent = t.saveBtn;
+
+                        // Auth modal tabs
+                        document.getElementById('login-tab-text').textContent = t.menuLogin;
+                        document.getElementById('register-tab-text').textContent = t.menuRegister;
+
+                        // Settings Modal Translations
+                        document.getElementById('settings-modal-title').textContent = t.settingsTitle;
+                        document.getElementById('settings-lang-title').textContent = t.langTitle;
+                        document.getElementById('settings-design-title').textContent = t.designTitle;
+
+                        // Note: loadAllContent is now handled by the initialization flow to prevent duplicates
+                    }
+
+                    function setDesign(design) {
+                        currentDesign = design;
+                        localStorage.setItem('design', design);
+
+                        // Update active states for design toggle buttons
+                        document.querySelectorAll('.design-option-btn').forEach(btn => {
+                            btn.classList.toggle('active', btn.dataset.design === design);
+                        });
+
+                        if (design === 'lightweight') {
+                            document.body.classList.add('lightweight-mode');
+                        } else {
+                            document.body.classList.remove('lightweight-mode');
+                        }
+                    }
+
+                    function escapeHtml(text) {
+                        if (text === null || typeof text === 'undefined') return '';
+                        const div = document.createElement('div');
+                        div.textContent = text;
+                        return div.innerHTML;
+                    }
+
+                    // ===== MODAL MANAGEMENT =====
+                    function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
+                    function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+
+                    function openCreatePostModal() { openModal('createPostModal'); }
+                    function closeCreatePostModal() { closeModal('createPostModal'); document.getElementById('createPostForm').reset(); document.getElementById('image-preview').style.display = 'none'; }
+
+                    function openSettingsModal() {
+                        // Ensure buttons reflect current state
+                        document.querySelectorAll('.lang-option-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === currentLang));
+                        document.querySelectorAll('.design-option-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.design === currentDesign));
+                        openModal('settingsModal');
+                    }
+                    function closeSettingsModal() { closeModal('settingsModal'); }
+
+                    function openAuthModal(mode) { switchAuthTab(mode); openModal('authModal'); }
+                    function closeAuthModal() { closeModal('authModal'); document.getElementById('loginForm').reset(); document.getElementById('registerForm').reset(); }
+
+                    function openProfileModal() {
+                        if (!currentUser) return;
+                        document.getElementById('profile-email').value = currentUser.email;
+                        const preview = document.getElementById('profile-icon-preview');
+                        const placeholder = document.getElementById('profile-icon-placeholder');
+                        if (currentUser.icon) { preview.src = currentUser.icon; preview.style.display = 'block'; placeholder.style.display = 'none'; }
+                        else { preview.style.display = 'none'; placeholder.style.display = 'block'; }
+                        openModal('profileModal');
+                    }
+                    function closeProfileModal() { closeModal('profileModal'); document.getElementById('profileForm').reset(); }
+
+                    function openArticleDetailByIndex(index) {
+                        const item = currentDisplayedItems[index];
+                        if (item) {
+                            if (!item.timestamp) openArticleDetail(item);
+                            else console.log("User post clicked. No detail view for this type yet.");
+                        }
+                    }
+                    function openArticleDetail(article) {
+                        const t = translations[currentLang];
+                        const title = currentLang === 'ja' ? article.title_ja : article.title_en;
+                        const content = (currentLang === 'ja' ? article.content_ja : article.content_en) || (currentLang === 'ja' ? article.description_ja : article.description_en);
+                        const sourceName = article.source ? (article.source.name || article.source) : '';
+
+                        // Update title in the new location
+                        document.getElementById('article-detail-title').textContent = title;
+
+                        const img = document.getElementById('article-detail-image');
+                        // Support both urlToImage (NewsAPI) and image/image_base64 (User Post)
+                        let imgSrc = article.urlToImage;
+                        if (!imgSrc) {
+                             if (article.image_base64) imgSrc = `data:image/jpeg;base64,${article.image_base64}`;
+                             else if (article.image) imgSrc = article.image;
+                        }
+
+                        if (imgSrc) {
+                            img.src = imgSrc;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+
+                        document.getElementById('article-detail-content').textContent = content;
+                        document.getElementById('article-detail-source').textContent = sourceName;
+                        const link = document.getElementById('article-detail-link');
+                        // Handle both url (NewsAPI) and constructed link for user posts if needed
+                        link.href = article.url || '#';
+                        link.textContent = t.readMore;
+                        if (!article.url) link.style.display = 'none'; else link.style.display = 'inline';
+
+                        openModal('articleDetailModal');
+                    }                    function closeArticleDetail() { closeModal('articleDetailModal'); }
+
+                    function previewImage(event, previewId) {
+                        const file = event.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = e => { document.getElementById(previewId).src = e.target.result; document.getElementById(previewId).style.display = 'block'; };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+
+                    // ===== UI & NAVIGATION =====
+                    function switchAuthTab(mode) {
+                        const t = translations[currentLang];
+                        const isLogin = mode === 'login';
+                        document.getElementById('login-tab').classList.toggle('active', isLogin);
+                        document.getElementById('register-tab').classList.toggle('active', !isLogin);
+                        document.getElementById('loginForm').style.display = isLogin ? 'flex' : 'none';
+                        document.getElementById('registerForm').style.display = isLogin ? 'none' : 'flex';
+                        document.getElementById('auth-modal-title').textContent = isLogin ? t.loginTitle : t.registerTitle;
+                    }
+
+                    function navigateHome() { loadAllContent(); }
+                    function navigateFavorites() { alert(translations[currentLang].sidebarFavorites + ' is under development.'); }
+                    function navigateSettings() { openSettingsModal(); }
+
+                    function toggleUserMenu() {
+                        const menu = document.getElementById('userMenu');
+                        menu.classList.toggle('active');
+                        const closeHandler = e => { if (!e.target.closest('.sidebar-user')) { menu.classList.remove('active'); document.removeEventListener('click', closeHandler); } };
+                        document.addEventListener('click', closeHandler);
+                    }
+
+                    // ===== DATA FETCHING & RENDERING =====
+                    async function loadAllContent() {
+                        const container = document.getElementById('articles-container');
+                        const updateBtn = document.getElementById('api-update-btn');
+                        const t = translations[currentLang];
+
+                        if (updateBtn.disabled) return;
+
+                        container.innerHTML = `<div class="no-articles"><p>${t.updating}</p></div>`;
+                        updateBtn.disabled = true;
+                        const originalText = document.getElementById('update-btn-text').textContent;
+                        document.getElementById('update-btn-text').textContent = t.updating;
+
+                        try {
+                            // Fetch both independently so one crash doesn't block the other
+                            const [postsData, articlesData] = await Promise.all([
+                                fetch('/api/posts')
+                                    .then(res => res.ok ? res.json() : [])
+                                    .catch(err => { console.error("Posts fetch failed:", err); return []; }),
+                                fetch(`/api/update?lang=${currentLang}`)
+                                    .then(res => res.ok ? res.json() : [])
+                                    .catch(err => { console.error("Articles fetch failed:", err); return []; })
+                            ]);
+
+                            renderAllContent(postsData, articlesData, container);
+                        } catch (error) {
+                            console.error('Error in loadAllContent:', error);
+                            container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
+                        } finally {
+                            updateBtn.disabled = false;
+                            document.getElementById('update-btn-text').textContent = originalText;
+                        }
+                    }
+
+                    async function performSearch(query) {
+                        const container = document.getElementById('articles-container');
+                        const t = translations[currentLang];
+                        if (!query) { loadAllContent(); return; }
+                        container.innerHTML = `<div class="no-articles"><p>${t.updating}</p></div>`;
+                        try {
+                            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&lang=${currentLang}`);
+                            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                            const data = await response.json();
+                            renderAllContent(data.posts || [], data.articles || [], container);
+                        } catch (error) {
+                            console.error('Search error:', error);
+                            container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
+                        }
+                    }
+
+                    function renderAllContent(posts, articles, container) {
+                        const t = translations[currentLang];
+                        currentDisplayedItems = [...(posts || []), ...(articles || [])];
+                        if (currentDisplayedItems.length === 0) {
+                            container.innerHTML = `<div class="no-articles"><p>${t.noArticles}</p></div>`;
+                            return;
+                        }
+                        container.innerHTML = `<div class="articles-grid">${currentDisplayedItems.map((item, index) =>
+                            item.timestamp ? renderUserPost(item, t, index) : renderArticle(item, t, index)
+                        ).join('')}</div>`;
+                    }
+
+                    function renderUserPost(post, t, index) {
+                        // Use author_email if available, otherwise fallback to 'User'
+                        const authorName = post.author_email ? post.author_email.split('@')[0] : 'User';
+
+                        // Image handling: check image_base64 (iOS) first, then image (Web)
+                        let imageHtml = '';
+                        if (post.image_base64) {
+                            imageHtml = `<img src="data:image/jpeg;base64,${post.image_base64}" class="article-image" onerror="this.style.display='none'">`;
+                        } else if (post.image) {
+                            imageHtml = `<img src="${escapeHtml(post.image)}" class="article-image" onerror="this.style.display='none'">`;
+                        }
+
+                        return `
+                            <div class="article-card liquidGlass-wrapper" onclick="openArticleDetailByIndex(${index})">
+                                <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                                <div class="liquidGlass-text" style="width: 100%; position: relative; z-index: 3;">
+                                    <div style="margin-bottom: 10px; display:flex; align-items:center; gap:8px;">
+                                        <span class="user-post-badge" style="background: rgba(0,113,227,0.8);">${escapeHtml(authorName)}</span>
+                                    </div>
+                                    <div class="article-header">
+                                        ${imageHtml}
+                                        <div class="article-content">
+                                            <h2 class="article-title-ja">${escapeHtml(post.title)}</h2>
+                                            ${post.description ? `<p class="article-description-ja">${escapeHtml(post.description)}</p>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="article-meta"><span>${new Date(post.timestamp).toLocaleString(currentLang === 'ja' ? 'ja-JP' : 'en-US')}</span></div>
+                                </div>
+                            </div>`;
+                    }
+
+                    function renderArticle(article, t, index) {
+                        const title = currentLang === 'ja' ? article.title_ja : article.title_en;
+                        const description = currentLang === 'ja' ? article.description_ja : article.description_en;
+                        return `
+                            <div class="article-card liquidGlass-wrapper" onclick="openArticleDetailByIndex(${index})">
+                                <div class="liquidGlass-effect"></div><div class="liquidGlass-tint"></div><div class="liquidGlass-shine"></div>
+                                <div class="liquidGlass-text" style="width: 100%; position: relative; z-index: 3;">
+                                    <div class="article-header">
+                                        ${article.urlToImage ? `<img src="${escapeHtml(article.urlToImage)}" class="article-image" onerror="this.style.display='none'">` : ''}
+                                        <div class="article-content">
+                                            <h2 class="article-title-ja">${escapeHtml(title)}</h2>
+                                            ${description ? `<p class="article-description-ja">${escapeHtml(description)}</p>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="article-meta">
+                                         ${article.source ? `<span>${escapeHtml(article.source.name || article.source)}</span>` : ''}
+                                         <a href="${escapeHtml(article.url)}" target="_blank" class="article-link">${t.readMore}</a>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                    // ===== AUTHENTICATION =====
+                    async function checkAuthStatus() {
+                        try {
+                            const response = await fetch('/api/auth/current');
+                            const data = await response.json();
+                            currentUser = data.logged_in ? data : null;
+                            updateUIForAuth();
+                        } catch (error) {
+                            console.error('Error checking auth status:', error);
+                            currentUser = null;
+                            updateUIForAuth();
+                        }
+                    }
+
+                    async function resendVerificationEmail() {
+                        const user = firebaseAuth.currentUser || firebaseUser;
+                        if (!user) {
+                            alert("Firebaseのログイン情報が取得できません。いったんログアウト→再ログインしてから再試行してください。");
+                            return;
+                        }
+                        try {
+                            await user.sendEmailVerification();
+                            const targetEmail = user.email || "(メールアドレス不明)";
+                            alert(`認証メールを送信しました: ${targetEmail}\n迷惑メール/プロモーションも確認してください。`);
+                        } catch (error) {
+                            console.error("Verification error:", error);
+                            alert("エラーが発生しました: " + error.message);
+                        }
+                    }
+
+                    function updateUIForAuth() {
+                        const loggedInMenu = document.getElementById('menu-logged-in');
+                        const loggedOutMenu = document.getElementById('menu-logged-out');
+                        const avatar = document.getElementById('userAvatar');
+                        const authButtons = document.getElementById('auth-buttons');
+                        const guestButtons = document.getElementById('guest-buttons');
+                        const logoutBtn = document.getElementById('top-logout-btn');
+                        const welcomeBanner = document.getElementById('guest-welcome-banner');
+                        const verificationBanner = document.getElementById('email-verification-banner');
+                        const verificationText = document.getElementById('verification-text');
+
+                        if (currentUser) {
+                            // Logged In State
+                            loggedInMenu.style.display = 'block';
+                            loggedOutMenu.style.display = 'none';
+
+                            // Email Verification Check
+                            const user = firebaseAuth.currentUser || firebaseUser;
+                            if (user && !user.emailVerified) {
+                                verificationBanner.style.display = 'block';
+                                if (verificationText) {
+                                    const targetEmail = user.email || currentUser.email || "";
+                                    verificationText.textContent = targetEmail
+                                        ? `メールアドレス（${targetEmail}）が未認証です。機能が制限される場合があります。`
+                                        : "メールアドレスが未認証です。機能が制限される場合があります。";
+                                }
+                            } else {
+                                verificationBanner.style.display = 'none';
+                            }
+
+                            // Top bar buttons
+                            if (authButtons) authButtons.style.display = 'flex'; // Container visible
+                            if (guestButtons) guestButtons.style.display = 'none';
+                            if (logoutBtn) logoutBtn.style.display = 'flex';
+
+                            if (welcomeBanner) welcomeBanner.style.display = 'none';
+
+                            avatar.style.backgroundImage = currentUser.icon ? `url(${currentUser.icon})` : '';
+                            avatar.textContent = currentUser.icon ? '' : (currentUser.email.charAt(0).toUpperCase() || '●');
+                        } else {
+                            // Logged Out State
+                            loggedInMenu.style.display = 'none';
+                            loggedOutMenu.style.display = 'block';
+                            verificationBanner.style.display = 'none';
+
+                            // Top bar buttons
+                            if (authButtons) authButtons.style.display = 'flex';
+                            if (guestButtons) guestButtons.style.display = 'flex';
+                            if (logoutBtn) logoutBtn.style.display = 'none';
+
+                            if (welcomeBanner) welcomeBanner.style.display = 'block';
+
+                            avatar.style.backgroundImage = '';
+                            avatar.textContent = '●';
+                        }
+                    }
+
+                    // Firebase Auth Handler
+                    async function handleFirebaseAuth(email, password, isRegister) {
+                        try {
+                            let userCredential;
+                            if (isRegister) {
+                                userCredential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+                            } else {
+                                userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+                            }
+                            const user = userCredential.user;
+
+                            // For new registrations, proactively send verification email.
+                            if (isRegister && user && !user.emailVerified) {
+                                try {
+                                    await user.sendEmailVerification();
+                                    alert(`認証メールを送信しました: ${user.email}\n迷惑メール/プロモーションも確認してください。`);
+                                } catch (e) {
+                                    console.error("Verification (on register) error:", e);
+                                }
+                            }
+                            const idToken = await user.getIdToken();
+
+                            // Backend session sync
+                            const response = await fetch('/api/auth/login', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ idToken: idToken })
+                            });
+
+                            if (!response.ok) throw new Error('Backend sync failed');
+
+                            closeAuthModal();
+                            await checkAuthStatus();
+                            await loadAllContent();
+
+                        } catch (error) {
+                            console.error('Auth Error:', error);
+                            alert(error.message);
+                        }
+                    }
+
+                    async function handleFormSubmit(form, url, method, onSuccess) {
+                        const submitBtn = form.querySelector('button[type="submit"]');
+                        const originalText = submitBtn.textContent;
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = translations[currentLang].updating;
+                        try {
+                            const response = await fetch(url, { method: method, body: new FormData(form) });
+                            const data = await response.json();
+                            if (!response.ok) throw new Error(data.error || 'Request failed');
+                            if (onSuccess) await onSuccess(data);
+                        } catch (error) {
+                            alert(error.message);
+                        } finally {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = originalText;
+                        }
+                    }
+
+                    async function handleLogout() {
+                        try {
+                            await firebaseAuth.signOut();
+                            await fetch('/api/auth/logout', { method: 'POST' });
+                            await checkAuthStatus();
+                            await loadAllContent();
+                        }
+                        catch (error) { console.error('Logout error:', error); }
+                    }
+            // ===== EVENT LISTENERS & INITIALIZATION =====
+            document.addEventListener('DOMContentLoaded', async () => {
+                // Keep Firebase Auth state in sync with the UI.
+                firebaseAuth.onAuthStateChanged(user => {
+                    firebaseUser = user || null;
+                    updateUIForAuth();
                 });
 
-                if (!response.ok) throw new Error('Backend sync failed');
-                
-                closeAuthModal();
-                await checkAuthStatus();
-                await loadAllContent();
+                // デザインとUIの初期化
+                setDesign(currentDesign);
+                setLanguage(currentLang);
 
-            } catch (error) {
-                console.error('Auth Error:', error);
-                alert(error.message);
-            }
-        }
+                // Event Listeners registration (Move this BEFORE await calls)
+                document.getElementById('createPostForm').addEventListener('submit', e => {
+                    e.preventDefault();
+                    handleFormSubmit(e.target, '/api/posts', 'POST', async () => {
+                        closeCreatePostModal();
+                        await loadAllContent();
+                    });
+                });
 
-        async function handleFormSubmit(form, url, method, onSuccess) {
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.disabled = true;
-            submitBtn.textContent = translations[currentLang].updating;
-            try {
-                const response = await fetch(url, { method: method, body: new FormData(form) });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Request failed');
-                if (onSuccess) await onSuccess(data);
-            } catch (error) {
-                alert(error.message);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
-            }
-        }
-        
-        async function handleLogout() {
-            try { 
-                await firebaseAuth.signOut();
-                await fetch('/api/auth/logout', { method: 'POST' }); 
-                await checkAuthStatus(); 
-                await loadAllContent(); 
-            } 
-            catch (error) { console.error('Logout error:', error); }
-        }
-// ===== EVENT LISTENERS & INITIALIZATION =====
-document.addEventListener('DOMContentLoaded', async () => {
-    // デザインとUIの初期化
-    setDesign(currentDesign);
-    setLanguage(currentLang);
+                document.getElementById('loginForm').addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+                    await handleFirebaseAuth(email, password, false);
+                });
 
-    // 認証状態の確認とコンテンツの読み込み（一回のみ実行）
-    await checkAuthStatus();
-    await loadAllContent();
+                document.getElementById('registerForm').addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const email = document.getElementById('register-email').value;
+                    const password = document.getElementById('register-password').value;
+                    const confirm = document.getElementById('register-confirm').value;
 
-    document.getElementById('createPostForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/posts', 'POST', async () => { closeCreatePostModal(); await loadAllContent(); }); });
+                    if (password !== confirm) {
+                        alert(translations[currentLang].confirmPasswordLabel + ' error');
+                        return;
+                    }
+                    await handleFirebaseAuth(email, password, true);
+                });
 
-    // Login Handler
-...
-            document.getElementById('loginForm').addEventListener('submit', async e => { 
-                e.preventDefault(); 
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-password').value;
-                await handleFirebaseAuth(email, password, false);
+                document.getElementById('profileForm').addEventListener('submit', e => {
+                    e.preventDefault();
+                    handleFormSubmit(e.target, '/api/profile', 'PUT', async () => {
+                        closeProfileModal();
+                        await checkAuthStatus();
+                        alert(translations[currentLang].saveBtn + ' complete');
+                    });
+                });
+
+                document.getElementById('post-image').addEventListener('change', e => previewImage(e, 'image-preview'));
+                document.getElementById('profile-icon-input').addEventListener('change', e => previewImage(e, 'profile-icon-preview'));
+
+                document.getElementById('api-update-btn').addEventListener('click', loadAllContent);
+                const searchInput = document.getElementById('search-input');
+                const clearSearchBtn = document.getElementById('clear-search');
+                searchInput.addEventListener('input', () => { clearSearchBtn.style.display = searchInput.value ? 'block' : 'none'; });
+                searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(searchInput.value.trim()); });
+                clearSearchBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    clearSearchBtn.style.display = 'none';
+                    loadAllContent();
+                });
+                document.getElementById('search-button').addEventListener('click', () => performSearch(searchInput.value.trim()));
+
+                // 認証状態の確認とコンテンツの読み込み（バックグラウンドで実行）
+                checkAuthStatus().then(() => {
+                    loadAllContent();
+                });
             });
-            
-            // Register Handler
-            document.getElementById('registerForm').addEventListener('submit', async e => { 
-                e.preventDefault(); 
-                const email = document.getElementById('register-email').value;
-                const password = document.getElementById('register-password').value;
-                const confirm = document.getElementById('register-confirm').value;
-                
-                if (password !== confirm) {
-                    alert(translations[currentLang].confirmPasswordLabel + ' error');
-                    return;
-                }
-                await handleFirebaseAuth(email, password, true);
-            });
-
-            document.getElementById('profileForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.target, '/api/profile', 'PUT', async () => { closeProfileModal(); await checkAuthStatus(); alert(translations[currentLang].saveBtn + ' complete'); }); });
-            
-            document.getElementById('post-image').addEventListener('change', e => previewImage(e, 'image-preview'));
-            document.getElementById('profile-icon-input').addEventListener('change', e => previewImage(e, 'profile-icon-preview'));
-
-            document.getElementById('api-update-btn').addEventListener('click', loadAllContent);
-            const searchInput = document.getElementById('search-input');
-            const clearSearchBtn = document.getElementById('clear-search');
-            searchInput.addEventListener('input', () => { clearSearchBtn.style.display = searchInput.value ? 'block' : 'none'; });
-            searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(searchInput.value.trim()); });
-            clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; clearSearchBtn.style.display = 'none'; loadAllContent(); });
-            document.getElementById('search-button').addEventListener('click', () => performSearch(searchInput.value.trim()));
-        });
-    </script>
-</body>
+        </script>
+    </body>
 </html>

@@ -10,15 +10,25 @@ posts_bp = Blueprint('posts', __name__)
 @posts_bp.route("", methods=["GET"])
 def get_posts():
     """
-    ユーザー投稿を取得 (Firestore)
+    ユーザー投稿を取得 (Firestore) - カーソルベースのページネーション対応
+    クエリパラメータ: limit (最大50, デフォルト20), last_id (次ページのカーソル)
     """
     try:
-        db = current_app.db
+        db = current_app.config.get("FIREBASE_DB")
         if not db:
             return jsonify([]), 200
 
+        limit = min(int(request.args.get("limit", 20)), 50)
+        last_doc_id = request.args.get("last_id")
+
         posts_ref = db.collection('posts')
-        query = posts_ref.order_by('timestamp', direction=firestore.Query.DESCENDING)
+        query = posts_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
+
+        if last_doc_id:
+            last_doc = db.collection('posts').document(last_doc_id).get()
+            if last_doc.exists:
+                query = query.start_after(last_doc)
+
         docs = query.stream()
 
         posts = []
@@ -88,7 +98,7 @@ def create_post():
                 # image_url = blob.public_url
 
         # Firestoreに保存
-        db = current_app.db
+        db = current_app.config.get("FIREBASE_DB")
         if not db:
             return jsonify({"error": "Database not connected"}), 500
 

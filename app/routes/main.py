@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify
-from app.services.aggregator import get_translated_articles
-from app.models import Post
 import os
+from flask import Blueprint, render_template, request, jsonify, current_app
+from firebase_admin import firestore
+from app.services.aggregator import get_translated_articles
 
 main_bp = Blueprint('main', __name__)
 
@@ -44,11 +44,12 @@ def about():
 def api_update():
     """
     API更新エンドポイント: ニュース記事を取得してJSONで返す
-    クエリパラメータ: lang=en または lang=ja (デフォルト: ja)
+    クエリパラメータ: q (検索ワード), lang=en または lang=ja (デフォルト: ja)
     """
+    query = request.args.get("q", "Apple")
     lang = request.args.get("lang", "ja")
-    # デフォルトのクエリを"Apple"に設定
-    articles = get_translated_articles(query="Apple", page_size=10, lang=lang)
+    # クエリパラメータ 'q' があればそれを使用、なければデフォルトの 'Apple'
+    articles = get_translated_articles(query=query, page_size=10, lang=lang)
     return jsonify(articles)
 
 
@@ -64,19 +65,35 @@ def search():
         if not query:
             return jsonify({"posts": [], "articles": []}), 200
 
-        # Placeholder for post search until Firebase is fully integrated
-        # Previously used SQLAlchemy: Post.query.filter(...)
+        # Firestoreから投稿を取得してPython側でフィルタリング
+        # (Firestoreは全文検索非対応のため)
         filtered_posts = []
+        db = current_app.config.get("FIREBASE_DB")
+        if db:
+            try:
+                docs = db.collection('posts').order_by(
+                    'timestamp', direction=firestore.Query.DESCENDING
+                ).limit(200).stream()
+                query_lower = query.lower()
+                for doc in docs:
+                    data = doc.to_dict()
+                    title = (data.get('title') or '').lower()
+                    desc = (data.get('description') or '').lower()
+                    if query_lower in title or query_lower in desc:
+                        data['id'] = doc.id
+                        data['type'] = 'user_post'
+                        ts = data.get('timestamp')
+                        if ts and hasattr(ts, 'isoformat'):
+                            data['timestamp'] = ts.isoformat()
+                        filtered_posts.append(data)
+            except Exception as e:
+                print(f"[search] Firestore error: {e}")
 
         # NewsAPI/NewsData.io/GNewsで記事を検索
         print(f"[search] Searching external APIs for: {query}, lang={lang}")
         articles = get_translated_articles(query=query, page_size=10, lang=lang)
 
-        # Note: filtered_posts is currently a list of dicts or objects. 
-        # Since it is empty, we don't need to call .to_dict() on items.
-        return jsonify(
-            {"posts": filtered_posts, "articles": articles}
-        ), 200
+        return jsonify({"posts": filtered_posts, "articles": articles}), 200
 
     except Exception as e:
         print(f"[search] Error: {type(e).__name__}: {e}")

@@ -1,6 +1,8 @@
-import os
+import re
+import threading
 from concurrent.futures import ThreadPoolExecutor
-from app.services.deepl import translate_to_en, translate_to_ja
+
+from app.services.deepl import translate_to_en, translate_to_ja, DeepLFatalError
 from app.services.gnews import fetch_full_articles_gnews
 from app.services.newsapi import fetch_full_articles
 from app.services.newsdata import fetch_full_articles_newsdata
@@ -8,16 +10,30 @@ from app.services.newsdata import fetch_full_articles_newsdata
 # 翻訳処理を並列実行するためのスレッドプール
 executor = ThreadPoolExecutor(max_workers=5)
 
-# 翻訳キャッシュ
-translation_cache = {}
+# 翻訳キャッシュ (スレッドセーフ, 上限500件)
+_translation_cache = {}
+_cache_lock = threading.Lock()
+_CACHE_MAX_SIZE = 500
 
-import re
+
+def _get_from_cache(key):
+    with _cache_lock:
+        return _translation_cache.get(key)
+
+
+def _set_to_cache(key, value):
+    with _cache_lock:
+        if len(_translation_cache) >= _CACHE_MAX_SIZE:
+            # 最も古いエントリを削除 (insertion-order guaranteed in Python 3.7+)
+            oldest = next(iter(_translation_cache))
+            del _translation_cache[oldest]
+        _translation_cache[key] = value
+
 
 def _is_japanese(text):
     """テキストが日本語（ひらがな、カタカナ、漢字）を含んでいるか判定"""
     return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text))
 
-from app.services.deepl import translate_to_en, translate_to_ja, DeepLFatalError
 
 def _translate_article(article_tuple):
     """個々の記事を翻訳するヘルパー関数"""
@@ -28,8 +44,9 @@ def _translate_article(article_tuple):
 
     # キャッシュチェック
     cache_key = f"{url}_{target_lang}"
-    if cache_key in translation_cache:
-        return translation_cache[cache_key]
+    cached = _get_from_cache(cache_key)
+    if cached:
+        return cached
 
     try:
         if target_lang == "ja":
@@ -38,7 +55,7 @@ def _translate_article(article_tuple):
             else:
                 title_ja = translate_to_ja(title) if title else ""
                 description_ja = translate_to_ja(desc) if desc else ""
-            
+
             result = {
                 "title_en": title, "title_ja": title_ja or title,
                 "description_en": desc, "description_ja": description_ja or desc,
@@ -51,14 +68,14 @@ def _translate_article(article_tuple):
                 description_en = translate_to_en(desc) if desc else ""
             else:
                 title_en, description_en = title, desc
-            
+
             result = {
                 "title_en": title_en or title, "title_ja": title,
                 "description_en": description_en or desc, "description_ja": desc,
                 "url": article["url"], "urlToImage": article["urlToImage"],
                 "publishedAt": article["publishedAt"], "source": article["source"], "lang": "en",
             }
-        translation_cache[cache_key] = result
+        _set_to_cache(cache_key, result)
         return result
     except DeepLFatalError:
         # DeepLが致命的なエラーを起こした場合、上位関数に伝える
@@ -74,20 +91,19 @@ def _translate_article(article_tuple):
             "lang": target_lang,
         }
 
+
 def _fetch_fallback_articles(api_query, page_size, target_lang):
     """DeepL利用不可時の代替手段：ターゲット言語の記事のみを取得"""
     print(f"[_fetch_fallback_articles] DeepL is down. Fetching {target_lang} articles only...")
     with ThreadPoolExecutor(max_workers=3) as api_executor:
-        futures = []
-        lang_code = "jp" if target_lang == "ja" else "en"
-        futures.append(api_executor.submit(fetch_full_articles, query=api_query, page_size=page_size, language=lang_code))
-        
-        lang_code_nd = "ja" if target_lang == "ja" else "en"
-        futures.append(api_executor.submit(fetch_full_articles_newsdata, query=api_query, page_size=page_size, language=lang_code_nd))
-        futures.append(api_executor.submit(fetch_full_articles_gnews, query=api_query, page_size=page_size, language=lang_code_nd))
-        
+        lang_code = "ja" if target_lang == "ja" else "en"
+        futures = [
+            api_executor.submit(fetch_full_articles, query=api_query, page_size=page_size, language=lang_code),
+            api_executor.submit(fetch_full_articles_newsdata, query=api_query, page_size=page_size, language=lang_code),
+            api_executor.submit(fetch_full_articles_gnews, query=api_query, page_size=page_size, language=lang_code),
+        ]
         all_results = [f.result() for f in futures]
-    
+
     combined = []
     seen_urls = set()
     for result_list in all_results:
@@ -108,6 +124,7 @@ def _fetch_fallback_articles(api_query, page_size, target_lang):
                 seen_urls.add(art["url"])
     return combined
 
+
 def get_translated_articles(query="Apple", page_size=10, lang="ja"):
     """
     ニュース記事を取得し、言語に応じて翻訳する
@@ -115,17 +132,16 @@ def get_translated_articles(query="Apple", page_size=10, lang="ja"):
     """
     print(f"[get_translated_articles] Received query: '{query}', target lang: {lang}")
     keywords = query.split()
-    api_query = " AND ".join(f'"{k}"' for k in keywords)
+    api_query = " ".join(keywords)  # Simple space-separated query for better hit rate
 
     try:
-        # 通常の取得（多言語）
+        # 通常の取得（指定言語のみ）
         with ThreadPoolExecutor(max_workers=5) as api_executor:
-            futures = []
-            futures.append(api_executor.submit(fetch_full_articles, query=api_query, page_size=page_size, language=None))
-            futures.append(api_executor.submit(fetch_full_articles_newsdata, query=api_query, page_size=page_size, language="en"))
-            futures.append(api_executor.submit(fetch_full_articles_newsdata, query=api_query, page_size=page_size, language="ja"))
-            futures.append(api_executor.submit(fetch_full_articles_gnews, query=api_query, page_size=page_size, language="en"))
-            futures.append(api_executor.submit(fetch_full_articles_gnews, query=api_query, page_size=page_size, language="ja"))
+            futures = [
+                api_executor.submit(fetch_full_articles, query=api_query, page_size=page_size, language=lang),
+                api_executor.submit(fetch_full_articles_newsdata, query=api_query, page_size=page_size, language=lang),
+                api_executor.submit(fetch_full_articles_gnews, query=api_query, page_size=page_size, language=lang),
+            ]
             all_results = [future.result() for future in futures]
 
         combined_articles = []
@@ -140,21 +156,25 @@ def get_translated_articles(query="Apple", page_size=10, lang="ja"):
                 all_articles.append(article)
                 seen_urls.add(url)
 
-        # キーワードフィルタリング
-        filtered_articles = []
+        # キーワードフィルタリング (Relaxed)
         lower_keywords = [k.lower() for k in keywords]
-        for article in all_articles:
-            title_lower = (article.get("title") or "").lower()
-            if all(k in title_lower for k in lower_keywords):
-                filtered_articles.append(article)
+        filtered_articles = [
+            a for a in all_articles
+            if all(k in (a.get("title") or "").lower() for k in lower_keywords)
+            or all(k in (a.get("description") or "").lower() for k in lower_keywords)
+        ]
+
+        # フィルタ結果が空の場合は全件にフォールバック
+        if not filtered_articles:
+            print(f"[get_translated_articles] No filtered articles for '{query}'. Returning all {len(all_articles)} unique articles.")
+            filtered_articles = all_articles[:page_size]
 
         if not filtered_articles:
             return []
 
         # 翻訳処理を並列実行
         tasks = [(article, lang) for article in filtered_articles]
-        result_articles = list(executor.map(_translate_article, tasks))
-        return result_articles
+        return list(executor.map(_translate_article, tasks))
 
     except DeepLFatalError:
         # DeepLが死んだ場合のフォールバック

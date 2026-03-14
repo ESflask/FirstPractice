@@ -4,128 +4,97 @@
 **News-Mobile / Flask-Web Integrated System**
 
 本プロジェクトは、Web (Flask) と iOS (Native SwiftUI) の両プラットフォームで動作するニュースアグリゲーションおよびユーザー投稿プラットフォームです。
-現在、Web版は稼働中（Renderデプロイ対応済み）で、iOS版はプロジェクトの初期段階です。最終的にはFirebaseをバックエンドとして採用し、両プラットフォーム間で認証とデータを共有します。
+Web版・iOS版共にFirebase (Authentication, Firestore) をバックエンドとして利用し、ユーザーデータと投稿をリアルタイムで同期します。
 
 ## 2. ディレクトリ構成 (Current Status)
 
-リファクタリング後の現在のプロジェクト構造です。
+Firebase統合完了後の現在のプロジェクト構造です。
 
 ```text
 / (Project Root)
-├── app/                          # Flask Webアプリケーション (Backend & Frontend)
-│   ├── __init__.py               # Application Factory
-│   ├── models.py                 # SQLite用 DBモデル (User, Post) - ※将来的にFirestoreへ移行
+├── app/                          # Flask Webアプリケーション
+│   ├── __init__.py               # Firebase Admin SDK初期化
+│   ├── models.py                 # (Deprecated) 旧SQLAlchemyモデル
 │   ├── routes/                   # エンドポイント定義
 │   │   ├── main.py               # ニュース取得・表示
-│   │   ├── auth.py               # 認証 (Session/SQLite)
-│   │   ├── posts.py              # 投稿API
-│   │   └── admin.py              # 管理画面
+│   │   ├── auth.py               # 認証 (Firebase Token検証)
+│   │   └── posts.py              # 投稿API (Firestore連携)
 │   ├── services/                 # 外部API連携
 │   │   ├── aggregator.py         # 記事取得・翻訳統合ロジック
 │   │   ├── deepl.py              # DeepL API
 │   │   ├── gnews.py              # GNews API
 │   │   ├── newsapi.py            # NewsAPI
 │   │   └── newsdata.py           # NewsData.io API
-│   ├── static/                   # 静的アセット
-│   │   ├── avatars/              # ユーザーアイコン (Local Storage)
-│   │   ├── uploads/              # 投稿画像 (Local Storage)
-│   │   └── glassUI.css
-│   ├── templates/                # Jinja2 テンプレート
-│   └── utils/
-│       └── decorators.py
+│   ├── static/                   # 静的アセット (glassUI.css, lightweightUI.css)
+│   └── templates/                # Jinja2 テンプレート (Firebase JS SDK)
 ├── News-Mobile/                  # iOS Nativeアプリケーション
 │   ├── News-Mobile/
 │   │   ├── News_MobileApp.swift  # Entry Point
-│   │   ├── ContentView.swift
+│   │   ├── ContentView.swift     # Main View (Unified Feed)
+│   │   ├── PostViewModel.swift   # Firestore Logic
 │   │   └── Assets.xcassets/
 │   └── News-Mobile.xcodeproj/
-├── data/                         # 初期データ・マイグレーション用JSON
 ├── docs/                         # ドキュメント類
-├── instance/                     # SQLiteデータベース (project.db)
-├── run.py                        # ローカル開発用起動スクリプト
-├── app.py                        # Renderデプロイ用互換スクリプト
-└── requirements.txt              # Python依存パッケージ
+├── requirements.txt              # Python依存パッケージ
+└── run.py                        # アプリケーション起動スクリプト
 ```
 
-## 3. アーキテクチャ移行計画
+## 3. アーキテクチャ移行計画 (Status Report)
 
-現在はFlask + SQLiteで完結していますが、iOSアプリとのデータ共有を実現するため、以下の段階を経てFirebase中心のアーキテクチャへ移行します。
+Web版のSQLite依存を脱却し、Firebase中心のアーキテクチャへの移行が完了しました。
 
 ### Phase 1: 現状整理とリファクタリング (完了)
-- Flaskアプリのモジュール分割 (`app/` 以下への整理)。
-- 外部API連携ロジック (`services/`) の分離。
-- iOSプロジェクトフォルダの配置。
+- Flaskアプリのモジュール分割。
+- 外部API連携ロジックの分離。
 
-### Phase 2: Firebase基盤の導入 (Next Step)
-iOSとWebで共通のバックエンドを持たせる準備を行います。
+### Phase 2: Firebase基盤の導入 (完了)
+- Firebase Project作成、Auth (Email/Password) 有効化。
+- Firestoreデータベース作成、ルール設定。
 
-1. **Firebase Project作成**: Consoleにてプロジェクト作成。
-2. **Authentication**: Email/Password認証を有効化。
-3. **Firestore**: データベース作成。`posts` コレクションを設計。
-4. **Storage**: 画像保存用のバケット作成。
+### Phase 3: iOSアプリ開発 & 接続 (完了 / 継続開発中)
+- Firebase SDK (Auth, Firestore) の導入済み。
+- **Native Liquid Glass** デザインの実装（ultraThinMaterial FAB、透過CreatePostView）。
+- ニュースとユーザー投稿の統合タイムライン実装済み。
+- 画像のアスペクト比維持表示、自動リサイズロジック実装済み。
+- Firebase Auth セキュリティフロー（メール認証・パスワード再設定・再認証・アカウント削除・メールアドレス変更）実装済み。
+- テーマ切替（ライト/ダーク/システム）・言語切替（JA/EN）・キーボード自動dismiss実装済み。
+- DeepL障害時のフォールバック機構（対象言語の記事のみ取得）実装済み。
 
-### Phase 3: iOSアプリ開発 & 接続
-iOSアプリを先行してFirebaseに接続し、ネイティブアプリとしての機能を実装します。
+### Phase 4: WebアプリのFirebase化 (完了)
+- **認証**: Firebase JS SDK + Admin SDKによるセッション管理へ移行済み。
+- **DB**: Firestoreへの完全移行済み。`users.json`, `posts.json` は廃止。
+- **UI**: パフォーマンスを重視した「Clean Glass (軽量モード)」を実装済み。
 
-- **SDK導入**: `FirebaseAuth`, `FirebaseFirestore`, `FirebaseStorage` をSPMで導入。
-- **認証実装**: iOS側でのログイン・新規登録。
-- **データ表示**: Firestore上のデータをSwiftUIでリスト表示。
-- **ニュース表示**: Flask側で作ったニュース取得ロジック（API）をiOSから叩くか、あるいはiOS側で直接APIを叩くか検討が必要。
-    - *推奨方針*: APIキー隠蔽のため、ニュース取得はFlaskサーバー経由 (`/api/update`) で行い、iOSはそれをJSONとして受け取る。
+## 4. データフロー (Current)
 
-### Phase 4: WebアプリのFirebase化 (Hybrid)
-Flaskアプリのデータ層をSQLiteからFirebaseへ移行します。
+### Authentication
+- **User** -> Firebase Auth (Client SDK) -> ID Token
+- **Token** -> Flask Backend (Verify via Admin SDK) -> Session Established
 
-- **認証移行**: Flaskのセッション管理(`auth.py`)を、Firebase Authentication (JS SDK) または Firebase Admin SDK に置き換え。
-- **DB移行**: `app/models.py` (SQLAlchemy) を廃止し、Firestoreへの読み書きに変更。
-    - 既存の `users.json`, `posts.json` データをFirestoreへマイグレーション。
-- **画像移行**: ローカルの `app/static/uploads` ではなく、Firebase Storageへの直接アップロード、またはServer経由アップロードに変更。
+### Database (Firestore)
+- **Web**: Firebase JS SDK <-> Firestore `posts` collection
+- **iOS**: Firebase iOS SDK <-> Firestore `posts` collection
+- **Sync**: Realtime updates on both platforms
 
-## 4. データフローの変更点
+### News Logic (Server-Side Aggregation)
+- **Web/iOS Request** -> Flask (`/api/update`)
+- **Flask** -> External APIs (NewsAPI, etc.) -> Translation (DeepL) -> **JSON Response**
+- *ニュース記事自体はDBに保存せず、オンデマンドで取得・翻訳してクライアントに返却。*
 
-### Before (現在)
-- **Web**: User -> Flask (Session) -> SQLite (User/Post)
-- **News**: Flask -> External APIs -> Translation -> Frontend (Jinja2)
-- **iOS**: (未実装)
+## 5. UIデザイン仕様
 
-### After (目標)
-- **Auth**: User -> Firebase Auth (Token発行)
-- **Database**:
-    - Web -> Firebase JS SDK -> Firestore
-    - iOS -> Firebase iOS SDK -> Firestore
-- **News Logic**:
-    - Web -> Flask (`services/aggregator.py`) -> Display
-    - iOS -> Request to Flask API (`/api/update`) -> JSON Response -> SwiftUI Display
-    - *これにより、高価なAPIキーや翻訳ロジックはサーバー(Flask)側に隠蔽され、クライアント(iOS)は安全にデータを取得できる。*
+### Web: Hybrid Glass
+- **Liquid Glass (Default)**: リッチなブラー効果とアニメーション。
+- **Clean Glass (Lightweight)**: アニメーションを排除し、描画負荷を最小限に抑えたモード。設定から即時切り替え可能。
 
-## 5. Renderデプロイ設定
-ディレクトリ構成変更後も以下の設定で動作します。
+### iOS: Native Liquid Glass
+- **Material**: iOS標準の `UltraThinMaterial` を全面的に採用。
+- **Unified Feed**: ニュース記事とユーザー投稿を単一のリストで表示。
+- **Native Interactions**: スワイプバック、長押しメニューなど、OS標準の操作感を提供。
 
-- **Root Directory**: `.` (ルート)
-- **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `gunicorn app:app`
-    - ※ルートにある `app.py` が `app/__init__.py` の `create_app` を呼び出すため正常に動作します。
-## 新しいUIの実装案
-Safariでは比較的快適に動作するが、Chromeではアニメーションが非常に重くなります。改善案として既存のliquid glassを再現したUIとは別で、軽量でシンプルなデザインを適応したいと思います
+## 6. Next Steps (Maintenance & Features)
 
-- デザインの詳細 : 上部に透明度低めのすりガラス状バーを置き（画面上に浮かせないで）、あとは記事を検索、検索、言語、投稿を作成、ニュースを作成、ログイン・新規登録などすべてそのままボタンを置いてください。既存のUIのさまざまなアニメーションは適応させる必要はありません。また、左のバーは入りません。既存のUIで、左のバーにNewsAppについてというボタンがありますが、それは、新しい別のUIでアイコンを押した時に http://127.0.0.1:5001/about に飛ぶようにしてください。（これは既存のデザインにも適応してください。元の"NewsAppについて"ボタンは消去しといて）
-- ユーザーによるUI変更 : 既存のUI・新しいUIともに、既存のUIでJA/ENの選択ボタンのところを設定ボタンに変更、そこをクリックしたら言語設定でJP/EN、デフォルトデザイン（既存のデザイン）/軽量デザイン（現在ここで説明している新しいデザイン）を選択できるようにしてください。
-## web版新デザインの追加事項
-- 新しい方の軽量型でざいんで、上のバーは、白いエフェクトのかかった透明　ではなく、普通の透明　デザインに変更してください。
-## iOS版 UIデザイン・機能仕様 (New)
-
-### デザインコンセプト: "Native Liquid Glass"
-- **Glassmorphism**: iOS標準の `UltraThinMaterial` や `RegularMaterial` を活用し、全てのボタン、ナビゲーションバー、キーボードアクセサリ等の背景に「すりガラス（Liquid Glass）」効果を適用する。
-- **スタイル**: GitHub Mobile (iOS) に近い、モダンでネイティブな質感を目指す。既存のWeb版のような過度なアニメーションは排除し、OS標準の心地よい遷移を採用する。
-- **カラーテーマ**: ベースカラーは「完全な白 (#FFFFFF)」または「完全な黒 (#000000)」のみとし、中間色を排してコンテンツの視認性を最大化する。
-
-### UIレイアウト変更 (Unified Timeline)
-- **統合タイムライン**: 従来の「ニュース」と「ユーザー投稿」のタブ切り替えを廃止し、単一のスクロール可能なフィードに統合する。ニュース記事とユーザー投稿が時系列（またはアルゴリズム順）に混在して表示される形式とする。
-- **ナビゲーション**: 上部のタブ切り替えバーを削除し、コンテンツ領域を最大化する。
-- **FAB (Floating Action Button)**: 画面右下の投稿ボタンは、iOS標準の `RegularMaterial` または `UltraThinMaterial` を採用した円形のガラスデザインとし、スクロールコンテンツの上に常に浮遊させる。
-
-### 追加機能要件 (from agents.md)
-- **認証高度化**: パスワード変更機能、アカウント削除機能（Firebase Authの再認証フローを含む）の実装。
-- **設定同期**: Web版とiOS版でテーマ設定やユーザー設定を同期する。(ログインしている場合に) - **ボトムナビゲーション**: 画面下部にiOS標準の `TabView` (Translucent Tab Bar) を配置する。背景には `UltraThinMaterial` を適用し、以下の2つのタブを設ける。
-    1. **ホーム**: 統合タイムラインを表示。画面上部には検索バー（Materialデザインの検索ボタン付き）を配置し、記事や投稿の検索を可能にする。
-    2. **設定**: アカウント設定およびアプリ設定画面。Web版と同等の機能（プロフィール編集、パスワード変更、アカウント削除、テーマ設定同期）を提供する。
+- **Technical Debt (優先)**: 既知の技術的課題の解消（`agents.md` の Known Issues 参照）。
+- **Push Notifications**: FCM (Firebase Cloud Messaging) を利用した新着通知の実装。
+- **Search Optimization**: Algolia等の全文検索エンジンの導入検討（Firestoreの検索機能強化のため）。
+- **Performance Tuning**: Firestoreページネーション対応・画像のCDN配信やキャッシュ戦略の最適化。

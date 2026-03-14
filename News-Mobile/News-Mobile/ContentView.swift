@@ -48,7 +48,7 @@ struct AppTabView: View {
                     Label("ホーム", systemImage: "house")
                 }
 
-            SettingsView()
+            SettingsView(newsViewModel: newsViewModel)
                 .tabItem {
                     Label("設定", systemImage: "gearshape")
                 }
@@ -64,7 +64,7 @@ enum FeedItem: Identifiable {
 
     var id: String {
         switch self {
-        case .article(let article): return article.url ?? UUID().uuidString
+        case .article(let article): return article.url
         case .post(let post): return post.id ?? UUID().uuidString
         }
     }
@@ -73,9 +73,12 @@ enum FeedItem: Identifiable {
         let isoFormatter = ISO8601DateFormatter()
         switch self {
         case .article(let article):
-            return isoFormatter.date(from: article.publishedAt) ?? Date.distantPast
+            if let publishedAt = article.publishedAt, let date = isoFormatter.date(from: publishedAt) {
+                return date
+            }
+            return Date() // 日付が取れない場合は現在時刻（最新）として扱う
         case .post(let post):
-            return post.timestamp?.dateValue() ?? Date.distantPast
+            return post.timestamp?.dateValue() ?? Date()
         }
     }
 }
@@ -83,6 +86,8 @@ enum FeedItem: Identifiable {
 struct HomeView: View {
     @ObservedObject var newsViewModel: NewsViewModel
     @ObservedObject var postViewModel: PostViewModel
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingCreatePost = false
     @State private var searchText = ""
 
@@ -98,7 +103,7 @@ struct HomeView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button(role: .destructive) {
-                            // アクション定義のみ
+                            authViewModel.signOut()
                         } label: {
                             Label("ログアウト", systemImage: "rectangle.portrait.and.arrow.right")
                         }
@@ -144,6 +149,8 @@ struct UnifiedFeedView: View {
     @EnvironmentObject var themeManager: ThemeManager
     var searchText: String
 
+    @State private var selectedItem: FeedItem?
+
     var combinedFeed: [FeedItem] {
         let articles = newsViewModel.articles.map { FeedItem.article($0) }
         let posts = postViewModel.posts.map { FeedItem.post($0) }
@@ -169,16 +176,55 @@ struct UnifiedFeedView: View {
         if newsViewModel.isLoading && postViewModel.isLoading && combinedFeed.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = newsViewModel.errorMessage, combinedFeed.isEmpty {
+            VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 40))
+                    .foregroundColor(.orange)
+                Text("ニュースの読み込みに失敗しました")
+                    .font(.headline)
+                Text(error)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Button("再試行") {
+                    Task {
+                        await newsViewModel.loadNews(lang: themeManager.language.rawValue)
+                        await postViewModel.fetchPosts()
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if combinedFeed.isEmpty && !newsViewModel.isLoading {
+            VStack {
+                Text("表示する記事がありません")
+                    .foregroundColor(.secondary)
+                Button("更新") {
+                    Task {
+                        await newsViewModel.loadNews(lang: themeManager.language.rawValue)
+                        await postViewModel.fetchPosts()
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
                 LazyVStack(spacing: 20) {
                     ForEach(combinedFeed) { item in
-                        switch item {
-                        case .article(let article):
-                            NewsCard(article: article)
-                        case .post(let post):
-                            UserPostCard(post: post)
+                        Button {
+                            selectedItem = item
+                        } label: {
+                            switch item {
+                            case .article(let article):
+                                NewsCard(article: article)
+                            case .post(let post):
+                                UserPostCard(post: post)
+                            }
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(.horizontal, 20)
@@ -189,20 +235,205 @@ struct UnifiedFeedView: View {
                 await newsViewModel.loadNews(lang: themeManager.language.rawValue)
                 await postViewModel.fetchPosts()
             }
+            .sheet(item: $selectedItem) { item in
+                ArticleDetailView(item: item)
+            }
         }
     }
 }
 
+// MARK: - Article Detail View (Modal Sheet)
+struct ArticleDetailView: View {
+    let item: FeedItem
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // 画像: 上部に配置、フル幅・元のアスペクト比を維持
+                    detailImage
+                        .frame(maxWidth: .infinity)
+
+                    // 本文エリア
+                    VStack(alignment: .leading, spacing: 16) {
+                        detailContent
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+
+            // 右上のXボタン
+            Button {
+                dismiss()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.top, 16)
+            .padding(.trailing, 16)
+        }
+        .background(Color(uiColor: .systemBackground))
+    }
+
+    @ViewBuilder
+    var detailImage: some View {
+        switch item {
+        case .article(let article):
+            if let imageUrl = article.urlToImage, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                    case .failure:
+                        EmptyView()
+                    case .empty:
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.1))
+                            .frame(height: 220)
+                            .overlay(ProgressView())
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+        case .post(let post):
+            if let uiImage = post.uiImage {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+            } else if let imageUrl = post.image, !imageUrl.isEmpty {
+                AsyncImage(url: URL(string: AppConfig.flaskBaseURL + imageUrl)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                    case .failure:
+                        EmptyView()
+                    case .empty:
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.1))
+                            .frame(height: 220)
+                            .overlay(ProgressView())
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    var detailContent: some View {
+        switch item {
+        case .article(let article):
+            Text(article.title)
+                .font(.title2)
+                .fontWeight(.bold)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Text(article.source ?? "Unknown")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.12))
+                    .clipShape(Capsule())
+                    .foregroundColor(.secondary)
+
+                if let publishedAt = article.publishedAt {
+                    Text(formatDate(publishedAt))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let desc = article.description, !desc.isEmpty {
+                Text(desc)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let url = URL(string: article.url) {
+                Link(destination: url) {
+                    HStack(spacing: 6) {
+                        Text("元記事を読む")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Image(systemName: "arrow.up.right")
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.blue)
+                }
+                .padding(.top, 4)
+            }
+
+        case .post(let post):
+            HStack {
+                Image(systemName: "person.circle.fill")
+                    .foregroundColor(.secondary)
+                Text(post.user_email)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+                if let timestamp = post.timestamp {
+                    Text(timestamp.dateValue(), style: .date)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Text(post.title)
+                .font(.title2)
+                .fontWeight(.bold)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(post.description)
+                .font(.body)
+                .foregroundColor(.primary)
+                .lineSpacing(6)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else { return dateString }
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .short
+        return displayFormatter.string(from: date)
+    }
+}
+
 struct SettingsView: View {
+    @ObservedObject var newsViewModel: NewsViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var themeManager: ThemeManager
     @State private var showingResetAlert = false
     @State private var alertMessage = ""
-    
+
     @State private var showingEmailChangeAlert = false
     @State private var newEmail = ""
     @State private var passwordForEmailChange = ""
-    
+
     @State private var showingDeleteAccountAlert = false
     @State private var passwordForDelete = ""
 
@@ -244,12 +475,12 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    
+
                     Button("メールアドレスを変更") {
                         newEmail = authViewModel.user?.email ?? ""
                         showingEmailChangeAlert = true
                     }
-                    
+
                     Button("パスワード再設定メールを送信") {
                         Task {
                             await authViewModel.sendPasswordReset()
@@ -275,15 +506,15 @@ struct SettingsView: View {
                         Text("ダーク").tag(ThemeMode.dark)
                         Text("システム").tag(ThemeMode.system)
                     }
-                    
+
                     Picker("言語 / Language", selection: $themeManager.language) {
                         ForEach(AppLanguage.allCases) { lang in
                             Text(lang.displayName).tag(lang)
                         }
                     }
-                    .onChange(of: themeManager.language) { _ in
+                    .onChange(of: themeManager.language) { oldValue, newValue in
                         Task {
-                            await newsViewModel.loadNews(lang: themeManager.language.rawValue)
+                            await newsViewModel.loadNews(lang: newValue.rawValue)
                         }
                     }
                 }
@@ -369,21 +600,32 @@ struct UserPostCard: View {
             if let uiImage = post.uiImage {
                 Image(uiImage: uiImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 220)
+                    .aspectRatio(contentMode: .fill) // Uniform width in list
+                    .frame(height: 200) // Fixed height
+                    .frame(maxWidth: .infinity) // Fill width
+                    .clipped() // Crop overflow
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else if let imageUrl = post.image, !imageUrl.isEmpty {
-                let baseURL = "http://localhost:5000"
-                AsyncImage(url: URL(string: baseURL + imageUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle()
-                        .fill(.ultraThinMaterial)
-                        .overlay(ProgressView())
+                AsyncImage(url: URL(string: AppConfig.flaskBaseURL + imageUrl)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill) // Uniform width in list
+                            .frame(height: 200) // Fixed height
+                            .frame(maxWidth: .infinity) // Fill width
+                            .clipped() // Crop overflow
+                    case .failure(_):
+                        EmptyView()
+                    case .empty:
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .overlay(ProgressView())
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
-                .frame(height: 220)
+                .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
 
@@ -401,6 +643,7 @@ struct UserPostCard: View {
         .padding(16)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .frame(maxWidth: .infinity) // Ensure uniform card width
     }
 }
 
@@ -447,16 +690,12 @@ struct NewsCard: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(height: 200)
+                            .frame(maxWidth: .infinity) // Ensure full width
+                            .clipped()
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     case .failure(_):
-                        Image(systemName: "photo.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(.secondary)
-                            .frame(height: 200)
-                            .frame(maxWidth: .infinity)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        EmptyView()
                     case .empty:
                         Rectangle()
                             .fill(.ultraThinMaterial)
@@ -484,7 +723,7 @@ struct NewsCard: View {
                 }
 
                 HStack {
-                    Text(article.source?.name ?? "Unknown")
+                    Text(article.source ?? "Unknown")
                         .font(.system(size: 11, weight: .bold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
@@ -504,9 +743,11 @@ struct NewsCard: View {
         .padding(16)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .frame(maxWidth: .infinity) // Ensure uniform card width
     }
 
-    func formatDate(_ dateString: String) -> String {
+    func formatDate(_ dateString: String?) -> String {
+        guard let dateString = dateString else { return "" }
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: dateString) else { return dateString }
 
