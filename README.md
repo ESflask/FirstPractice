@@ -1,4 +1,5 @@
 # Multi-API News Application (Web & iOS)
+![3C4E4793-8B76-44FE-863F-7A2CD265FC12_1_105_c](https://github.com/user-attachments/assets/05000198-978a-4ef7-a798-daeb0222122a)
 
 A cross-platform news aggregation and social platform that pulls articles from multiple global sources (NewsAPI, GNews, NewsData.io), translates them seamlessly using DeepL, and lets users share and discuss content.
 
