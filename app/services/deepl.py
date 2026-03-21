@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # 環境変数の読み込み
 load_dotenv()
 
-AUTH_KEY = os.getenv("DEEPL_AUTH_KEY", "REDACTED_DEEPL_KEY")
+AUTH_KEY = os.getenv("DEEPL_AUTH_KEY", "")
 BASE_URL = "https://api-free.deepl.com/v2/translate"
 
 
@@ -25,7 +25,7 @@ def _request_translation(text, target_lang):
     if not text:
         return ""
     
-    auth_key = os.getenv("DEEPL_AUTH_KEY", "REDACTED_DEEPL_KEY")
+    auth_key = os.getenv("DEEPL_AUTH_KEY", "")
     url = _get_deepl_url(auth_key)
     
     headers = {

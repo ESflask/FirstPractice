@@ -11,7 +11,7 @@ def create_app():
 
     load_dotenv()
 
-    app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+    app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
 
     # File upload settings
     UPLOAD_FOLDER = os.path.join(app.root_path, "static/uploads")
